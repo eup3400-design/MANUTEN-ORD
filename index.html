@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Frota Manutenção RD - Dashboard de Gestão de Frota</title>
 
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -31,9 +34,6 @@
     
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Supabase JS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- FontAwesome & Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -563,22 +563,17 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT & LOGIC -->
+    <!-- JAVASCRIPT & LOGIC WITH SUPABASE INTEGRATION -->
     <script>
-        // CONFIGURAÇÃO DO BANCO DE DADOS (Supabase)
-        // =====================================================================
-        const SUPABASE_URL = "https://pmnuxjufhmwoniasxvle.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbnV4anVmaG13b25pYXN4dmxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwODI1MzYsImV4cCI6MjEwMTY1ODUzNn0.QDyX6FGTb1pdepzTsUI8SpSjvKy8nI877zgb1tCu-zk";
-        // =====================================================================
-
-        const supabaseClient = (SUPABASE_URL.startsWith('http') && window.supabase)
-            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-            : null;
+        // CONFIGURAÇÃO DO SUPABASE
+        const SUPABASE_URL = "https://sjkvclxhuuioeitkghgs.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqa3ZjbHhodXVpb2VpdGtnaGdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjE5NjUsImV4cCI6MjEwNTEzNzk2NX0.c1k6ktWNEC1Iw-2kLa-e6jdVfRYPfF39iMs75LZPlF4";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const ADMIN_PASSWORD_HASH = "admin123";
         let isAdminLoggedIn = false;
 
-        // DADOS PADRÃO DE FROTA COM DIAS SEM ABASTECER
+        // DADOS PADRÃO DE FROTA (FALLBACK)
         const defaultFleetData = [
             { Placa: "SCH4B28", Motorista: "Fernando Souto", Corresponsavel: "Fernando Souto", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 95260, MetaKM: 1600, ProximaRevisaoKM: 105206, KMRodado: 0, PercMeta: 0, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 3 },
             { Placa: "SCH6G48", Motorista: "Johan Willian", Corresponsavel: "Johan Willian", Modelo: "Hilux CD 4x4", Gerencia: "Murilo Lopes (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 118902, MetaKM: 1600, ProximaRevisaoKM: 126531, KMRodado: 787, PercMeta: 49, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 1 },
@@ -601,6 +596,60 @@
         let currentActiveTab = 'painel';
         let chartStatusInstance = null;
         let chartGerenciaInstance = null;
+
+        // OPERAÇÕES DO SUPABASE
+        async function fetchFleetDataFromSupabase() {
+            try {
+                const { data, error } = await _supabase.from('veiculos').select('*');
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    fleetData = data.map(v => ({
+                        Placa: v.placa,
+                        Motorista: v.motorista || '',
+                        Corresponsavel: v.corresponsavel || '',
+                        Modelo: v.modelo || '',
+                        Gerencia: v.gerencia || '',
+                        Proprietario: v.proprietario || 'Próprio',
+                        Status: v.status || 'Disponível',
+                        KMAtual: v.km_atual || 0,
+                        MetaKM: v.meta_km || 0,
+                        ProximaRevisaoKM: v.proxima_revisao_km || 0,
+                        KMRodado: v.km_rodado || 0,
+                        PercMeta: v.perc_meta || 0,
+                        ClassificacaoOciosidade: v.classificacao_ociosidade || 'NORMAL',
+                        DiasParado: v.dias_parado || 0,
+                        DiasSemAbastecer: v.dias_sem_abastecer || 0
+                    }));
+                }
+            } catch (e) {
+                console.warn('Usando dados locais/padrão:', e.message);
+                const savedFleet = getSavedFleetData();
+                if (savedFleet && savedFleet.length > 0) fleetData = savedFleet;
+            }
+        }
+
+        async function fetchKeyHistoryFromSupabase() {
+            try {
+                const { data, error } = await _supabase.from('historico_chaves').select('*').order('id', { ascending: false });
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    keyHistory = data.map(k => ({
+                        id: k.id,
+                        nome: k.nome,
+                        placa: k.placa,
+                        modelo: k.modelo,
+                        dataEntrega: k.data_entrega,
+                        dataDevolucao: k.data_devolucao || '',
+                        cidade: k.cidade || '-',
+                        status: k.status || 'Em Uso'
+                    }));
+                }
+            } catch (e) {
+                console.warn('Usando chaves locais/padrão:', e.message);
+                const savedKeys = getSavedKeyHistory();
+                if (savedKeys && savedKeys.length > 0) keyHistory = savedKeys;
+            }
+        }
 
         // TIMESTAMP MANAGEMENT
         function saveLastUpdateTimestamp() {
@@ -801,7 +850,7 @@
             renderAllViews();
         }
 
-        // PERSISTENCE
+        // PERSISTENCE (LOCAL STORAGE AS BACKUP)
         function saveFleetData(data) { localStorage.setItem('fleet_data', JSON.stringify(data)); }
         function getSavedFleetData() { try { const s = localStorage.getItem('fleet_data'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
         function saveKeyHistory(history) { localStorage.setItem('fleet_keys', JSON.stringify(history)); }
@@ -810,7 +859,7 @@
         function saveMotoristasMap(map) { localStorage.setItem('fleet_motoristas', JSON.stringify(map)); }
         function saveSingleMotorista(placa, motorista) { const map = getSavedMotoristas(); map[placa] = motorista; saveMotoristasMap(map); }
 
-        function resetBaseDados() {
+        async function resetBaseDados() {
             if (!isAdminLoggedIn) return;
             if (confirm("Resetar dados para a versão padrão inicial?")) {
                 localStorage.removeItem('fleet_data');
@@ -818,6 +867,21 @@
                 localStorage.removeItem('fleet_motoristas');
                 fleetData = [...defaultFleetData];
                 keyHistory = [...defaultKeyHistory];
+                
+                // Tenta atualizar Supabase
+                try {
+                    await _supabase.from('veiculos').delete().neq('placa', '');
+                    const dbVeiculos = fleetData.map(v => ({
+                        placa: v.Placa, motorista: v.Motorista, corresponsavel: v.Corresponsavel,
+                        modelo: v.Modelo, gerencia: v.Gerencia, proprietario: v.Proprietario,
+                        status: v.Status, km_atual: v.KMAtual, meta_km: v.MetaKM,
+                        proxima_revisao_km: v.ProximaRevisaoKM, km_rodado: v.KMRodado,
+                        perc_meta: v.PercMeta, classificacao_ociosidade: v.ClassificacaoOciosidade,
+                        dias_parado: v.DiasParado, dias_sem_abastecer: v.DiasSemAbastecer
+                    }));
+                    await _supabase.from('veiculos').insert(dbVeiculos);
+                } catch(e) { console.error(e); }
+
                 saveLastUpdateTimestamp();
                 populateFilterDropdowns();
                 renderAllViews();
@@ -825,25 +889,12 @@
         }
 
         // INITIALIZATION
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             isAdminLoggedIn = sessionStorage.getItem('isAdmin') === 'true';
 
-            const savedFleet = getSavedFleetData();
-            if (savedFleet && savedFleet.length > 0) fleetData = savedFleet;
-
-            const savedKeys = getSavedKeyHistory();
-            if (savedKeys && savedKeys.length > 0) keyHistory = savedKeys;
-
-            const savedMap = getSavedMotoristas();
-            fleetData.forEach(item => {
-                if (item.DiasSemAbastecer === undefined) item.DiasSemAbastecer = item.ClassificacaoOciosidade === "SEM ABASTECIMENTO" ? 2 : 0;
-                if (savedMap[item.Placa] !== undefined && savedMap[item.Placa] !== '') {
-                    item.Motorista = savedMap[item.Placa];
-                } else if (item.Motorista) {
-                    savedMap[item.Placa] = item.Motorista;
-                }
-            });
-            saveMotoristasMap(savedMap);
+            // Carrega dados do Supabase
+            await fetchFleetDataFromSupabase();
+            await fetchKeyHistoryFromSupabase();
 
             displayLastUpdateTimestamp();
             populateFilterDropdowns();
@@ -908,25 +959,37 @@
             if (isAdminLoggedIn) renderBaseDadosCentral(data);
         }
 
-        function updateMotoristaInline(placa, newMotoristaName) {
+        async function updateMotoristaInline(placa, newMotoristaName) {
             if (!isAdminLoggedIn) return;
             const item = fleetData.find(d => d.Placa === placa);
             if (item) {
                 item.Motorista = newMotoristaName.trim();
                 saveSingleMotorista(placa, item.Motorista);
                 saveFleetData(fleetData);
+
+                // Sincroniza Supabase
+                try {
+                    await _supabase.from('veiculos').update({ motorista: item.Motorista }).eq('placa', placa);
+                } catch(e) { console.error('Erro ao salvar no Supabase:', e); }
+
                 saveLastUpdateTimestamp();
                 populateFilterDropdowns();
                 renderAllViews();
             }
         }
 
-        function updateDiasSemAbastecerInline(placa, days) {
+        async function updateDiasSemAbastecerInline(placa, days) {
             if (!isAdminLoggedIn) return;
             const item = fleetData.find(d => d.Placa === placa);
             if (item) {
                 item.DiasSemAbastecer = parseInt(days) || 0;
                 saveFleetData(fleetData);
+
+                // Sincroniza Supabase
+                try {
+                    await _supabase.from('veiculos').update({ dias_sem_abastecer: item.DiasSemAbastecer }).eq('placa', placa);
+                } catch(e) { console.error('Erro ao salvar no Supabase:', e); }
+
                 saveLastUpdateTimestamp();
                 renderAllViews();
             }
@@ -1182,7 +1245,7 @@
             }
         }
 
-        function handleRegistrarChave(e) {
+        async function handleRegistrarChave(e) {
             e.preventDefault();
             if (!isAdminLoggedIn) return;
 
@@ -1196,7 +1259,7 @@
             const formattedEntrega = dataEntrega ? dataEntrega.split('-').reverse().join('/') : '-';
             const formattedDevolucao = dataDevolucao ? dataDevolucao.split('-').reverse().join('/') : '';
 
-            keyHistory.unshift({
+            const newChaveItem = {
                 id: Date.now(),
                 nome: nome,
                 placa: placa,
@@ -1205,15 +1268,30 @@
                 dataDevolucao: formattedDevolucao || '',
                 cidade: cidade,
                 status: dataDevolucao ? 'Devolvido' : 'Em Uso'
-            });
+            };
 
+            keyHistory.unshift(newChaveItem);
             saveKeyHistory(keyHistory);
+
+            // Sincroniza com Supabase
+            try {
+                await _supabase.from('historico_chaves').insert([{
+                    nome: nome,
+                    placa: placa,
+                    modelo: modelo,
+                    data_entrega: formattedEntrega,
+                    data_devolucao: formattedDevolucao,
+                    cidade: cidade,
+                    status: newChaveItem.status
+                }]);
+            } catch(err) { console.error('Erro ao registrar chave no Supabase:', err); }
+
             saveLastUpdateTimestamp();
             renderChavesHistory(getFilteredData());
             document.getElementById('formChaves').reset();
         }
 
-        function updateDataDevolucaoInline(id, dateValueISO) {
+        async function updateDataDevolucaoInline(id, dateValueISO) {
             if (!isAdminLoggedIn) return;
             const record = keyHistory.find(k => k.id === id);
             if (record) {
@@ -1226,6 +1304,15 @@
                     record.status = 'Em Uso';
                 }
                 saveKeyHistory(keyHistory);
+
+                // Sincroniza Supabase
+                try {
+                    await _supabase.from('historico_chaves').update({
+                        data_devolucao: record.dataDevolucao,
+                        status: record.status
+                    }).eq('id', id);
+                } catch(err) { console.error('Erro ao atualizar Supabase:', err); }
+
                 saveLastUpdateTimestamp();
                 renderChavesHistory(getFilteredData());
             }
@@ -1277,11 +1364,16 @@
             }).join('');
         }
 
-        function excluirChave(id) {
+        async function excluirChave(id) {
             if (!isAdminLoggedIn) return;
             if (confirm('Excluir este registro?')) {
                 keyHistory = keyHistory.filter(k => k.id !== id);
                 saveKeyHistory(keyHistory);
+
+                try {
+                    await _supabase.from('historico_chaves').delete().eq('id', id);
+                } catch(err) { console.error(err); }
+
                 saveLastUpdateTimestamp();
                 renderChavesHistory(getFilteredData());
             }
@@ -1326,7 +1418,7 @@
             reader.readAsText(file, 'UTF-8');
         }
 
-        function parseCSVData(text) {
+        async function parseCSVData(text) {
             const lines = text.split('\n').filter(l => l.trim() !== '');
             if (lines.length < 2) return;
 
@@ -1379,6 +1471,29 @@
                 fleetData = newFleet;
                 saveFleetData(fleetData);
                 saveMotoristasMap(savedMap);
+
+                // Envia dados novos para o Supabase (Upsert)
+                try {
+                    const dbObjects = newFleet.map(v => ({
+                        placa: v.Placa,
+                        motorista: v.Motorista,
+                        corresponsavel: v.Corresponsavel,
+                        modelo: v.Modelo,
+                        gerencia: v.Gerencia,
+                        proprietario: v.Proprietario,
+                        status: v.Status,
+                        km_atual: v.KMAtual,
+                        meta_km: v.MetaKM,
+                        proxima_revisao_km: v.ProximaRevisaoKM,
+                        km_rodado: v.KMRodado,
+                        perc_meta: v.PercMeta,
+                        classificacao_ociosidade: v.ClassificacaoOciosidade,
+                        dias_parado: v.DiasParado,
+                        dias_sem_abastecer: v.DiasSemAbastecer
+                    }));
+                    await _supabase.from('veiculos').upsert(dbObjects);
+                } catch(e) { console.error('Erro ao subir CSV para Supabase:', e); }
+
                 saveLastUpdateTimestamp();
                 populateFilterDropdowns();
                 renderAllViews();
