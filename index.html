@@ -573,22 +573,15 @@
         const ADMIN_PASSWORD_HASH = "admin123";
         let isAdminLoggedIn = false;
 
-        // DADOS PADRÃO DE FROTA (FALLBACK)
+        // DADOS PADRÃO DE FROTA (FALLBACK FILTRADOS POR ITAMAR ALBUQUERQUE (MOR))
         const defaultFleetData = [
-            { Placa: "SCH4B28", Motorista: "Fernando Souto", Corresponsavel: "Fernando Souto", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 95260, MetaKM: 1600, ProximaRevisaoKM: 105206, KMRodado: 0, PercMeta: 0, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 3 },
-            { Placa: "SCH6G48", Motorista: "Johan Willian", Corresponsavel: "Johan Willian", Modelo: "Hilux CD 4x4", Gerencia: "Murilo Lopes (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 118902, MetaKM: 1600, ProximaRevisaoKM: 126531, KMRodado: 787, PercMeta: 49, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 1 },
-            { Placa: "TGK5E59", Motorista: "Matheus Castanheira", Corresponsavel: "Matheus Castanheira", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 33428, MetaKM: 1600, ProximaRevisaoKM: 34100, KMRodado: 507, PercMeta: 32, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 2 },
-            { Placa: "SIR1A55", Motorista: "Willian AT", Corresponsavel: "Carlos Eduardo", Modelo: "STRADA ENDURANCE", Gerencia: "Operações Sp", Proprietario: "Locado", Status: "Disponível", KMAtual: 45200, MetaKM: 2000, ProximaRevisaoKM: 50000, KMRodado: 1850, PercMeta: 92, ClassificacaoOciosidade: "NÃO PARTICIPA", DiasParado: 0, DiasSemAbastecer: 0 },
-            { Placa: "SIV9I19", Motorista: "Andrey Elias Costa", Corresponsavel: "Juliana Paes", Modelo: "Argo Flex 1.0 4P", Gerencia: "Serviços Logística", Proprietario: "Próprio", Status: "Manutenção", KMAtual: 68100, MetaKM: 1500, ProximaRevisaoKM: 68500, KMRodado: 210, PercMeta: 14, ClassificacaoOciosidade: "MANUTENÇÃO", DiasParado: 5, DiasSemAbastecer: 4 },
-            { Placa: "SIU9I71", Motorista: "Gustavo Rocha", Corresponsavel: "Roberto Lima", Modelo: "S10 CS LS MT 4x4", Gerencia: "Campo & Obras", Proprietario: "Próprio", Status: "Disponível", KMAtual: 82300, MetaKM: 1800, ProximaRevisaoKM: 83000, KMRodado: 1720, PercMeta: 95, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 1 },
-            { Placa: "SYU3G17", Motorista: "Paulo Sérgio", Corresponsavel: "Paulo Sérgio", Modelo: "STRADA ENDURANCE CP FLEX 1.3", Gerencia: "Murilo Lopes (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 14200, MetaKM: 2000, ProximaRevisaoKM: 20000, KMRodado: 1980, PercMeta: 99, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 2 }
+            { Placa: "SCH4B28", Motorista: "Fernando Souto", Corresponsavel: "Fernando Souto", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (MOR)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 95260, MetaKM: 1600, ProximaRevisaoKM: 105206, KMRodado: 0, PercMeta: 0, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 3 },
+            { Placa: "TGK5E59", Motorista: "Matheus Castanheira", Corresponsavel: "Matheus Castanheira", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (MOR)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 33428, MetaKM: 1600, ProximaRevisaoKM: 34100, KMRodado: 507, PercMeta: 32, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 2 }
         ];
 
         const defaultKeyHistory = [
-            { id: 1, nome: "Willian AT", placa: "SIR1A55", modelo: "STRADA ENDURANCE", dataEntrega: "27/07/2026", dataDevolucao: "12/08/2026", cidade: "-", status: "Devolvido" },
-            { id: 2, nome: "Andrey Elias Costa", placa: "SIV9I19", modelo: "Argo Flex 1.0 4P", dataEntrega: "10/08/2026", dataDevolucao: "", cidade: "-", status: "Em Uso" },
-            { id: 3, nome: "Gustavo Rocha", placa: "SIU9I71", modelo: "S10 CS LS MT 4x4", dataEntrega: "13/08/2026", dataDevolucao: "13/08/2026", cidade: "-", status: "Devolvido" },
-            { id: 4, nome: "Paulo Sérgio", placa: "SYU3G17", modelo: "STRADA ENDURANCE CP FLEX 1.3", dataEntrega: "14/08/2026", dataDevolucao: "03/09/2026", cidade: "Goiânia", status: "Devolvido" }
+            { id: 1, nome: "Fernando Souto", placa: "SCH4B28", modelo: "Hilux CD 4x4", dataEntrega: "27/07/2026", dataDevolucao: "12/08/2026", cidade: "-", status: "Devolvido" },
+            { id: 2, nome: "Matheus Castanheira", placa: "TGK5E59", modelo: "Hilux CD 4x4", dataEntrega: "10/08/2026", dataDevolucao: "", cidade: "-", status: "Em Uso" }
         ];
 
         let fleetData = [...defaultFleetData];
@@ -597,12 +590,17 @@
         let chartStatusInstance = null;
         let chartGerenciaInstance = null;
 
-        // OPERAÇÕES DO SUPABASE
+        // OPERAÇÕES DO SUPABASE - BUSCA APENAS DA GERÊNCIA "Itamar Albuquerque (MOR)"
         async function fetchFleetDataFromSupabase() {
             try {
-                const { data, error } = await _supabase.from('veiculos').select('*');
+                const { data, error } = await _supabase
+                    .from('veiculos')
+                    .select('*')
+                    .eq('gerencia', 'Itamar Albuquerque (MOR)');
+
                 if (error) throw error;
-                if (data && data.length > 0) {
+
+                if (data) {
                     fleetData = data.map(v => ({
                         Placa: v.placa,
                         Motorista: v.motorista || '',
@@ -622,9 +620,9 @@
                     }));
                 }
             } catch (e) {
-                console.warn('Usando dados locais/padrão:', e.message);
-                const savedFleet = getSavedFleetData();
-                if (savedFleet && savedFleet.length > 0) fleetData = savedFleet;
+                console.warn('Usando dados locais/padrão filtrados:', e.message);
+                const savedFleet = getSavedFleetData() || defaultFleetData;
+                fleetData = savedFleet.filter(d => d.Gerencia === 'Itamar Albuquerque (MOR)');
             }
         }
 
@@ -861,16 +859,15 @@
 
         async function resetBaseDados() {
             if (!isAdminLoggedIn) return;
-            if (confirm("Resetar dados para a versão padrão inicial?")) {
+            if (confirm("Resetar dados para a versão padrão inicial da gerência?")) {
                 localStorage.removeItem('fleet_data');
                 localStorage.removeItem('fleet_keys');
                 localStorage.removeItem('fleet_motoristas');
                 fleetData = [...defaultFleetData];
                 keyHistory = [...defaultKeyHistory];
                 
-                // Tenta atualizar Supabase
                 try {
-                    await _supabase.from('veiculos').delete().neq('placa', '');
+                    await _supabase.from('veiculos').delete().eq('gerencia', 'Itamar Albuquerque (MOR)');
                     const dbVeiculos = fleetData.map(v => ({
                         placa: v.Placa, motorista: v.Motorista, corresponsavel: v.Corresponsavel,
                         modelo: v.Modelo, gerencia: v.Gerencia, proprietario: v.Proprietario,
@@ -892,7 +889,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             isAdminLoggedIn = sessionStorage.getItem('isAdmin') === 'true';
 
-            // Carrega dados do Supabase
+            // Carrega dados filtrados do Supabase
             await fetchFleetDataFromSupabase();
             await fetchKeyHistoryFromSupabase();
 
@@ -967,7 +964,6 @@
                 saveSingleMotorista(placa, item.Motorista);
                 saveFleetData(fleetData);
 
-                // Sincroniza Supabase
                 try {
                     await _supabase.from('veiculos').update({ motorista: item.Motorista }).eq('placa', placa);
                 } catch(e) { console.error('Erro ao salvar no Supabase:', e); }
@@ -985,7 +981,6 @@
                 item.DiasSemAbastecer = parseInt(days) || 0;
                 saveFleetData(fleetData);
 
-                // Sincroniza Supabase
                 try {
                     await _supabase.from('veiculos').update({ dias_sem_abastecer: item.DiasSemAbastecer }).eq('placa', placa);
                 } catch(e) { console.error('Erro ao salvar no Supabase:', e); }
@@ -1273,7 +1268,6 @@
             keyHistory.unshift(newChaveItem);
             saveKeyHistory(keyHistory);
 
-            // Sincroniza com Supabase
             try {
                 await _supabase.from('historico_chaves').insert([{
                     nome: nome,
@@ -1305,7 +1299,6 @@
                 }
                 saveKeyHistory(keyHistory);
 
-                // Sincroniza Supabase
                 try {
                     await _supabase.from('historico_chaves').update({
                         data_devolucao: record.dataDevolucao,
@@ -1439,6 +1432,11 @@
                 const placa = getVal('Placa');
                 if (!placa) continue;
 
+                const gerenciaCSV = getVal('Gerência') || getVal('Gerencia') || 'Itamar Albuquerque (MOR)';
+                
+                // Filtra para aceitar apenas registros pertencentes a esta gerência
+                if (gerenciaCSV !== 'Itamar Albuquerque (MOR)') continue;
+
                 const corresponsavel = getVal('Corresponsável') || getVal('Corresponsavel');
                 const motoristaCSV = getVal('Motorista') || getVal('Responsável') || corresponsavel;
 
@@ -1453,7 +1451,7 @@
                     Motorista: motoristaFinal || '',
                     Corresponsavel: corresponsavel,
                     Modelo: getVal('Modelo') || 'N/I',
-                    Gerencia: getVal('Gerência') || getVal('Gerencia') || 'Geral',
+                    Gerencia: gerenciaCSV,
                     Proprietario: getVal('Proprietário') || 'Próprio',
                     Status: getVal('Status') || 'Disponível',
                     KMAtual: parseInt(getVal('KM Atual')) || 0,
@@ -1472,7 +1470,6 @@
                 saveFleetData(fleetData);
                 saveMotoristasMap(savedMap);
 
-                // Envia dados novos para o Supabase (Upsert)
                 try {
                     const dbObjects = newFleet.map(v => ({
                         placa: v.Placa,
@@ -1497,7 +1494,9 @@
                 saveLastUpdateTimestamp();
                 populateFilterDropdowns();
                 renderAllViews();
-                alert(`Base carregada com sucesso! (${newFleet.length} veículos)`);
+                alert(`Base carregada com sucesso! (${newFleet.length} veículos da gerência Itamar Albuquerque (MOR))`);
+            } else {
+                alert('Nenhum veículo encontrado no CSV para a gerência "Itamar Albuquerque (MOR)".');
             }
         }
 
@@ -1511,7 +1510,7 @@
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', 'frota_controle_pro.csv');
+            link.setAttribute('download', 'frota_itamar_albuquerque_mor.csv');
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
