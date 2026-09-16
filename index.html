@@ -1440,10 +1440,21 @@
                 const corresponsavel = getVal('Corresponsável') || getVal('Corresponsavel');
                 const motoristaCSV = getVal('Motorista') || getVal('Responsável') || corresponsavel;
 
-                let motoristaFinal = savedMap[placa];
-                if (!motoristaFinal || motoristaFinal.trim() === '') {
+                // 1. Procura se o veículo já existe no sistema atual
+                const existingVehicle = fleetData.find(v => v.Placa === placa);
+
+                // 2. Preservação do motorista: Prioriza dados locais/Supabase antes do CSV
+                let motoristaFinal = '';
+                if (existingVehicle && existingVehicle.Motorista && existingVehicle.Motorista.trim() !== '') {
+                    motoristaFinal = existingVehicle.Motorista;
+                } else if (savedMap[placa] && savedMap[placa].trim() !== '') {
+                    motoristaFinal = savedMap[placa];
+                } else {
                     motoristaFinal = motoristaCSV;
-                    if (motoristaFinal) savedMap[placa] = motoristaFinal;
+                }
+
+                if (motoristaFinal) {
+                    savedMap[placa] = motoristaFinal;
                 }
 
                 newFleet.push({
@@ -1494,7 +1505,7 @@
                 saveLastUpdateTimestamp();
                 populateFilterDropdowns();
                 renderAllViews();
-                alert(`Base carregada com sucesso! (${newFleet.length} veículos da gerência Itamar Albuquerque (MOR))`);
+                alert(`Base carregada com sucesso! Os motoristas cadastrados foram mantidos.`);
             } else {
                 alert('Nenhum veículo encontrado no CSV para a gerência "Itamar Albuquerque (MOR)".');
             }
