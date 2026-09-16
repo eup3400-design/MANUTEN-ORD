@@ -32,6 +32,9 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- FontAwesome & Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -562,6 +565,16 @@
 
     <!-- JAVASCRIPT & LOGIC -->
     <script>
+        // CONFIGURAÇÃO DO BANCO DE DADOS (Supabase)
+        // =====================================================================
+        const SUPABASE_URL = "https://pmnuxjufhmwoniasxvle.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbnV4anVmaG13b25pYXN4dmxlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwODI1MzYsImV4cCI6MjEwMTY1ODUzNn0.QDyX6FGTb1pdepzTsUI8SpSjvKy8nI877zgb1tCu-zk";
+        // =====================================================================
+
+        const supabaseClient = (SUPABASE_URL.startsWith('http') && window.supabase)
+            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+            : null;
+
         const ADMIN_PASSWORD_HASH = "admin123";
         let isAdminLoggedIn = false;
 
