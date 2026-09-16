@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frota Manutenção RD - Dashboard de Gestão de Frota</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f3ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#1e1b4b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- FontAwesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        }
+        .tab-btn-active {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white !important;
+            box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.39);
+        }
+        .tab-btn-default {
+            background: rgba(30, 41, 59, 0.6);
+            color: #94a3b8;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .tab-btn-default:hover {
+            background: rgba(51, 65, 85, 0.8);
+            color: #f8fafc;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- HEADER & NAVBAR -->
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800/80 shadow-2xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap justify-between items-center gap-4">
+            
+            <!-- BRANDING -->
+            <div class="flex items-center space-x-3.5">
+                <div class="bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 text-white p-3 rounded-2xl shadow-lg shadow-indigo-500/20 flex items-center justify-center">
+                    <i class="fa-solid fa-truck-fast text-2xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <h1 class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+                            Frota Manutenção RD <span class="text-indigo-400 text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">PRO</span>
+                        </h1>
+                        <span id="roleBadge" class="text-xs bg-slate-800 text-slate-300 font-medium px-2.5 py-0.5 rounded-full border border-slate-700/60 shadow-inner flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Modo Consulta
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                        <span id="lastUpdateBadge" class="inline-flex items-center gap-1 text-slate-400">
+                            <i class="fa-regular fa-clock text-indigo-400"></i>
+                            <span id="lastUpdateText">Atualização: --/--/---- --:--</span>
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- CONTROLES & AUTENTICAÇÃO -->
+            <div class="flex items-center gap-2.5">
+                <div class="admin-only flex items-center gap-2 hidden">
+                    <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2 border border-emerald-500/30 active:scale-95">
+                        <i class="fa-solid fa-file-csv"></i> Importar CSV
+                        <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCSVUpload(event)">
+                    </label>
+                    <button onclick="exportCSVWithMotoristas()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-700/80 transition flex items-center gap-1.5 active:scale-95">
+                        <i class="fa-solid fa-download text-indigo-400"></i> Exportar
+                    </button>
+                    <button onclick="resetBaseDados()" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-semibold px-3 py-2.5 rounded-xl border border-rose-800/40 transition flex items-center gap-1.5 active:scale-95" title="Restaurar dados padrões">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                </div>
+
+                <button id="btnAuthToggle" onclick="handleAuthToggle()" class="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 border border-indigo-400/20 transition-all flex items-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-shield-halved"></i> ÁREA ADMIN
+                </button>
+            </div>
+        </div>
+
+        <!-- ABA DE NAVEGAÇÃO -->
+        <div class="border-t border-slate-800/60 px-4 py-2 bg-slate-900/40">
+            <div class="max-w-7xl mx-auto flex flex-wrap items-center gap-2 text-xs">
+                <button id="tab-btn-painel" onclick="switchTab('painel')" class="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 tab-btn-active">
+                    <i class="fa-solid fa-chart-pie"></i> Painel Geral
+                </button>
+                <button id="tab-btn-ficha" onclick="switchTab('ficha')" class="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 tab-btn-default">
+                    <i class="fa-solid fa-id-card"></i> Ficha do Veículo
+                </button>
+                <button id="tab-btn-alertas" onclick="switchTab('alertas')" class="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 tab-btn-default relative">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Alertas & Manutenção
+                    <span id="alertBadgeCount" class="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full hidden">0</span>
+                </button>
+                <button id="tab-btn-km" onclick="switchTab('km')" class="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 tab-btn-default">
+                    <i class="fa-solid fa-gauge-high"></i> Relatório KM
+                </button>
+                <button id="tab-btn-chaves" onclick="switchTab('chaves')" class="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 tab-btn-default">
+                    <i class="fa-solid fa-key text-amber-400"></i> Controle de Chaves
+                </button>
+                <button id="tab-btn-base" onclick="switchTab('base')" class="admin-only hidden px-4 py-2 rounded-xl text-xs font-semibold transition-all text-amber-300 bg-amber-950/40 border border-amber-800/40 hover:bg-amber-900/50 flex items-center gap-2 ml-auto">
+                    <i class="fa-solid fa-database"></i> Base Central
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- BARRA DE FILTROS GLOBAIS -->
+    <section class="bg-slate-900/60 border-b border-slate-800/80 shadow-inner py-3 relative z-30 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+            <!-- Gerência Multi-Select -->
+            <div class="relative multi-select-container">
+                <label class="block font-semibold text-slate-400 mb-1">Gerência:</label>
+                <button type="button" onclick="toggleDropdown('dropdownGerencia')" class="w-full bg-slate-800/80 border border-slate-700/70 rounded-xl p-2.5 text-left flex justify-between items-center focus:ring-2 focus:ring-indigo-500 text-slate-200">
+                    <span id="labelGerencia" class="truncate font-medium">Todas as Gerências</span>
+                    <i class="fa-solid fa-chevron-down text-slate-500 text-xs ml-1"></i>
+                </button>
+                <div id="dropdownGerencia" class="multi-select-menu hidden absolute z-50 left-0 right-0 mt-1.5 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto p-2 space-y-1"></div>
+            </div>
+
+            <!-- Status Multi-Select -->
+            <div class="relative multi-select-container">
+                <label class="block font-semibold text-slate-400 mb-1">Status:</label>
+                <button type="button" onclick="toggleDropdown('dropdownStatus')" class="w-full bg-slate-800/80 border border-slate-700/70 rounded-xl p-2.5 text-left flex justify-between items-center focus:ring-2 focus:ring-indigo-500 text-slate-200">
+                    <span id="labelStatus" class="truncate font-medium">Todos os Status</span>
+                    <i class="fa-solid fa-chevron-down text-slate-500 text-xs ml-1"></i>
+                </button>
+                <div id="dropdownStatus" class="multi-select-menu hidden absolute z-50 left-0 right-0 mt-1.5 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto p-2 space-y-1"></div>
+            </div>
+
+            <!-- Motorista Multi-Select -->
+            <div class="relative multi-select-container">
+                <label class="block font-semibold text-slate-400 mb-1">Motorista:</label>
+                <button type="button" onclick="toggleDropdown('dropdownMotorista')" class="w-full bg-slate-800/80 border border-slate-700/70 rounded-xl p-2.5 text-left flex justify-between items-center focus:ring-2 focus:ring-indigo-500 text-slate-200">
+                    <span id="labelMotorista" class="truncate font-medium">Todos os Motoristas</span>
+                    <i class="fa-solid fa-chevron-down text-slate-500 text-xs ml-1"></i>
+                </button>
+                <div id="dropdownMotorista" class="multi-select-menu hidden absolute z-50 left-0 right-0 mt-1.5 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto p-2 space-y-1"></div>
+            </div>
+
+            <!-- Proprietário Multi-Select -->
+            <div class="relative multi-select-container">
+                <label class="block font-semibold text-slate-400 mb-1">Proprietário:</label>
+                <button type="button" onclick="toggleDropdown('dropdownProprietario')" class="w-full bg-slate-800/80 border border-slate-700/70 rounded-xl p-2.5 text-left flex justify-between items-center focus:ring-2 focus:ring-indigo-500 text-slate-200">
+                    <span id="labelProprietario" class="truncate font-medium">Todos os Proprietários</span>
+                    <i class="fa-solid fa-chevron-down text-slate-500 text-xs ml-1"></i>
+                </button>
+                <div id="dropdownProprietario" class="multi-select-menu hidden absolute z-50 left-0 right-0 mt-1.5 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto p-2 space-y-1"></div>
+            </div>
+
+            <!-- Pesquisar -->
+            <div>
+                <label class="block font-semibold text-slate-400 mb-1">Buscar Placa / Modelo:</label>
+                <div class="relative">
+                    <input type="text" id="filterSearch" oninput="applyGlobalFilters()" placeholder="Ex: SCH4B28, Hilux..." class="w-full bg-slate-800/80 border border-slate-700/70 text-slate-200 placeholder-slate-500 rounded-xl p-2.5 pl-8 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-3 text-slate-500"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+        <!-- 1. PAINEL GERAL -->
+        <div id="view-painel" class="space-y-6">
+            <!-- CARDS KPI -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="glass-card p-4 rounded-2xl flex items-center justify-between border-l-4 border-l-indigo-500">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Veículos</p>
+                        <h3 id="kpi-total" class="text-2xl font-black text-white mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20"><i class="fa-solid fa-car text-xl"></i></div>
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl flex items-center justify-between border-l-4 border-l-emerald-500">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Disponíveis</p>
+                        <h3 id="kpi-disponivel" class="text-2xl font-black text-emerald-400 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20"><i class="fa-solid fa-circle-check text-xl"></i></div>
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl flex items-center justify-between border-l-4 border-l-amber-500">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Manutenção</p>
+                        <h3 id="kpi-manutencao" class="text-2xl font-black text-amber-400 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20"><i class="fa-solid fa-wrench text-xl"></i></div>
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl flex items-center justify-between border-l-4 border-l-cyan-500">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">KM Rodado Total</p>
+                        <h3 id="kpi-km" class="text-2xl font-black text-cyan-400 mt-1">0 km</h3>
+                    </div>
+                    <div class="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20"><i class="fa-solid fa-gauge-high text-xl"></i></div>
+                </div>
+
+                <div class="glass-card p-4 rounded-2xl flex items-center justify-between border-l-4 border-l-violet-500">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Com Motorista</p>
+                        <h3 id="kpi-motoristas" class="text-2xl font-black text-violet-400 mt-1">0</h3>
+                    </div>
+                    <div class="p-3 bg-violet-500/10 text-violet-400 rounded-xl border border-violet-500/20"><i class="fa-solid fa-id-card text-xl"></i></div>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="glass-panel p-5 rounded-2xl">
+                    <h4 class="font-bold text-sm text-slate-200 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-indigo-400"></i> Status da Frota
+                    </h4>
+                    <div class="h-64 relative flex items-center justify-center">
+                        <canvas id="chartStatus"></canvas>
+                    </div>
+                </div>
+                <div class="glass-panel p-5 rounded-2xl lg:col-span-2">
+                    <h4 class="font-bold text-sm text-slate-200 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-bar text-indigo-400"></i> Distribuição por Gerência
+                    </h4>
+                    <div class="h-64">
+                        <canvas id="chartGerencia"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELA RESUMO -->
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                    <h4 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-list text-indigo-400"></i> Visão Geral da Frota
+                    </h4>
+                    <span class="text-xs text-slate-400 font-medium">Exibindo registros atualizados</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/80 text-slate-400 uppercase font-bold border-b border-slate-800 tracking-wider">
+                            <tr>
+                                <th class="p-3.5">Placa</th>
+                                <th class="p-3.5 bg-amber-500/10 text-amber-300 border-x border-amber-500/20"><i class="fa-solid fa-user-gear mr-1"></i> Motorista</th>
+                                <th class="p-3.5">Corresponsável</th>
+                                <th class="p-3.5">Modelo</th>
+                                <th class="p-3.5">Gerência</th>
+                                <th class="p-3.5">Status</th>
+                                <th class="p-3.5">KM Rodado</th>
+                                <th class="p-3.5">% Meta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablePainelBody" class="divide-y divide-slate-800/60 font-medium"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. FICHA DO VEÍCULO -->
+        <div id="view-ficha" class="hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h3 class="font-bold text-slate-200 text-base">Ficha Técnica Detalhada</h3>
+                    <p class="text-xs text-slate-400">Selecione uma placa para visualizar todo o histórico e indicadores</p>
+                </div>
+                <select id="selectFichaPlaca" onchange="renderFichaDetails()" class="w-full md:w-72 bg-slate-800 border border-slate-700 text-slate-200 rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </select>
+            </div>
+            <div id="fichaDetailContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- 3. ALERTAS & MANUTENÇÃO -->
+        <div id="view-alertas" class="hidden space-y-6">
+            
+            <!-- PAINEL DE NOVO ALERTA: ABASTECIMENTO RECORRENTE (2 DIAS) -->
+            <div class="glass-panel bg-gradient-to-r from-amber-950/40 via-slate-900/80 to-slate-900/80 border-l-4 border-l-amber-500 border border-amber-500/20 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                <div class="flex items-start justify-between flex-wrap gap-4 relative z-10">
+                    <div class="flex items-start gap-3.5">
+                        <div class="p-3 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30 text-2xl animate-pulse">
+                            <i class="fa-solid fa-gas-pump"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-extrabold text-amber-200 text-base">Aviso de Abastecimento Recorrente</h4>
+                                <span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold px-2 py-0.5 rounded-full">Regra: 2 Dias</span>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                                Monitoramento inteligente de abastecimento: Veículos com <strong>2 ou mais dias sem registro de abastecimento</strong> exigem atenção imediata da equipe de gestão para atualização da frota.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 text-right">
+                        <span class="text-xs text-amber-300/80 uppercase font-bold block">Requerem Abastecimento</span>
+                        <span id="fuelAlertCount" class="text-2xl font-black text-amber-400">0 Veículos</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARDS RESUMO ALERTAS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-l-rose-500 flex items-center gap-4">
+                    <div class="p-3 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div>
+                    <div>
+                        <h5 class="font-bold text-sm text-slate-200">Revisão Próxima (&lt; 1.000 KM)</h5>
+                        <p class="text-xs text-slate-400">Veículos próximos do limite de manutenção preventiva</p>
+                    </div>
+                </div>
+                <div class="glass-card p-4 rounded-2xl border-l-4 border-l-amber-500 flex items-center gap-4">
+                    <div class="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20"><i class="fa-solid fa-clock-rotate-left text-xl"></i></div>
+                    <div>
+                        <h5 class="font-bold text-sm text-slate-200">Ociosidade / Dias Parado</h5>
+                        <p class="text-xs text-slate-400">Veículos parados em manutenção ou sem uso contínuo</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELA DE ALERTAS -->
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                    <h4 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-amber-400"></i> Central de Alertas Ativos
+                    </h4>
+                    <span class="text-xs text-slate-400">Abastecimento • Revisões • Inatividade</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/80 text-slate-400 uppercase font-bold border-b border-slate-800 tracking-wider">
+                            <tr>
+                                <th class="p-3.5">Placa</th>
+                                <th class="p-3.5 bg-amber-500/10 text-amber-300 border-x border-amber-500/20">Motorista</th>
+                                <th class="p-3.5">Modelo</th>
+                                <th class="p-3.5">Status</th>
+                                <th class="p-3.5 text-center">Alerta de Abastecimento</th>
+                                <th class="p-3.5">KM Atual</th>
+                                <th class="p-3.5">Próx. Revisão</th>
+                                <th class="p-3.5">Dif. KM</th>
+                                <th class="p-3.5">Dias Parado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableAlertasBody" class="divide-y divide-slate-800/60 font-medium"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. RELATÓRIO KM -->
+        <div id="view-km" class="hidden space-y-6">
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                    <h4 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-gauge-high text-indigo-400"></i> Relatório Integrado de Quilometragem e Meta
+                    </h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/80 text-slate-400 uppercase font-bold border-b border-slate-800 tracking-wider">
+                            <tr>
+                                <th class="p-3.5">Placa</th>
+                                <th class="p-3.5 bg-amber-500/10 text-amber-300 border-x border-amber-500/20">Motorista</th>
+                                <th class="p-3.5">Corresponsável</th>
+                                <th class="p-3.5">Modelo</th>
+                                <th class="p-3.5">Gerência</th>
+                                <th class="p-3.5">Meta KM</th>
+                                <th class="p-3.5">KM Rodado</th>
+                                <th class="p-3.5">% Meta</th>
+                                <th class="p-3.5 min-w-[160px]">Ociosidade / Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableKMBody" class="divide-y divide-slate-800/60 font-medium"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. CONTROLADOR DE CHAVES -->
+        <div id="view-chaves" class="hidden space-y-6">
+            <!-- REGISTRO APENAS ADMIN -->
+            <div class="admin-only hidden glass-panel rounded-2xl p-6 space-y-4 border-indigo-500/30">
+                <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-400"></i> Registrar Retirada de Chave
+                </h3>
+                <form id="formChaves" onsubmit="handleRegistrarChave(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 items-end">
+                    <div class="lg:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Quem retirou:</label>
+                        <input type="text" id="chaveNome" required placeholder="Nome motorista" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Placa:</label>
+                        <select id="chavePlaca" onchange="autoFillChaveModelo()" required class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 font-bold focus:ring-2 focus:ring-indigo-500"></select>
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Modelo:</label>
+                        <input type="text" id="chaveModelo" readonly placeholder="Automático" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-500 font-medium">
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Data Entrega:</label>
+                        <input type="date" id="chaveDataEntrega" required class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Data Devolução:</label>
+                        <input type="date" id="chaveDataDevolucao" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Cidade Destino:</label>
+                        <input type="text" id="chaveCidade" placeholder="Destino" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="lg:col-span-1">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-lg shadow-emerald-900/30">
+                            Salvar Retirada
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="consulta-only glass-panel rounded-2xl p-4 flex items-center gap-3 border-amber-500/20">
+                <i class="fa-solid fa-circle-info text-amber-400 text-xl"></i>
+                <p class="text-xs text-slate-300 font-medium">Modo Consulta ativo. Faça login como Administrador para registrar devoluções ou novas retiradas.</p>
+            </div>
+
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                    <h4 class="font-bold text-sm text-slate-200">Histórico de Chaves Retiradas</h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/80 text-slate-400 uppercase font-bold border-b border-slate-800">
+                            <tr>
+                                <th class="p-3.5">Nome</th>
+                                <th class="p-3.5">Placa</th>
+                                <th class="p-3.5">Modelo</th>
+                                <th class="p-3.5">Data Entrega</th>
+                                <th class="p-3.5 bg-amber-500/10 text-amber-300 border-x border-amber-500/20">Data Devolução</th>
+                                <th class="p-3.5">Cidade</th>
+                                <th class="p-3.5">Status</th>
+                                <th class="p-3.5 text-center admin-only hidden">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableChavesHistoryBody" class="divide-y divide-slate-800/60 font-medium"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. BASE DE DADOS CENTRAL (EXCLUSIVO ADMIN) -->
+        <div id="view-base" class="admin-only hidden space-y-6">
+            <div class="glass-panel border border-amber-500/30 rounded-2xl p-5 flex justify-between items-center flex-wrap gap-4 bg-amber-950/20">
+                <div class="flex items-center gap-3.5">
+                    <div class="p-3 bg-amber-500/20 text-amber-400 rounded-xl"><i class="fa-solid fa-pen-to-square text-xl"></i></div>
+                    <div>
+                        <h4 class="font-bold text-amber-200 text-sm">Edição Direta da Frota</h4>
+                        <p class="text-xs text-slate-300">Altere o motorista ou dados diretamente na tabela abaixo. Salve ou baixe a versão em CSV.</p>
+                    </div>
+                </div>
+                <button onclick="exportCSVWithMotoristas()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-900/30">
+                    <i class="fa-solid fa-floppy-disk mr-1.5"></i> Baixar CSV Atualizado
+                </button>
+            </div>
+
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/80 text-slate-200 flex justify-between items-center">
+                    <h4 class="font-bold text-sm">📁 Base de Dados Central Completa</h4>
+                    <span id="baseRowCount" class="text-xs text-indigo-400 font-semibold">0 registros</span>
+                </div>
+                <div class="overflow-x-auto max-h-[600px]">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900 uppercase font-bold border-b border-slate-800 sticky top-0 z-10">
+                            <tr>
+                                <th class="p-3.5 bg-slate-900">Placa</th>
+                                <th class="p-3.5 bg-amber-950/80 text-amber-200 border-x border-amber-800/60 min-w-[180px]">✏️ Motorista</th>
+                                <th class="p-3.5">Corresponsável</th>
+                                <th class="p-3.5">Modelo</th>
+                                <th class="p-3.5">Gerência</th>
+                                <th class="p-3.5">Proprietário</th>
+                                <th class="p-3.5">Status</th>
+                                <th class="p-3.5">Dias s/ Abastecer</th>
+                                <th class="p-3.5">KM Atual</th>
+                                <th class="p-3.5">Meta KM</th>
+                                <th class="p-3.5">KM Rodado</th>
+                                <th class="p-3.5">% Meta</th>
+                                <th class="p-3.5">Dias Parado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBaseBody" class="divide-y divide-slate-800/60 font-medium"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL LOGIN ADMIN -->
+    <div id="modalLogin" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+        <div class="glass-panel rounded-3xl shadow-2xl max-w-sm w-full p-6 space-y-5 border border-slate-700">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="font-extrabold text-white text-lg">Acesso Restrito</h3>
+                <p class="text-xs text-slate-400">Insira a senha de administrador para gerenciar e editar a frota.</p>
+            </div>
+
+            <form onsubmit="autenticarAdmin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Senha do Administrador:</label>
+                    <input type="password" id="adminPasswordInput" required placeholder="Digite a senha..." class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <p id="loginErrorMsg" class="text-xs text-rose-400 font-semibold mt-1.5 hidden"><i class="fa-solid fa-circle-exclamation mr-1"></i> Senha incorreta. Tente novamente.</p>
+                </div>
+                <div class="flex gap-2.5 pt-2">
+                    <button type="button" onclick="closeLoginModal()" class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition">Cancelar</button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition">Entrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT & LOGIC -->
+    <script>
+        const ADMIN_PASSWORD_HASH = "admin123";
+        let isAdminLoggedIn = false;
+
+        // DADOS PADRÃO DE FROTA COM DIAS SEM ABASTECER
+        const defaultFleetData = [
+            { Placa: "SCH4B28", Motorista: "Fernando Souto", Corresponsavel: "Fernando Souto", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 95260, MetaKM: 1600, ProximaRevisaoKM: 105206, KMRodado: 0, PercMeta: 0, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 3 },
+            { Placa: "SCH6G48", Motorista: "Johan Willian", Corresponsavel: "Johan Willian", Modelo: "Hilux CD 4x4", Gerencia: "Murilo Lopes (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 118902, MetaKM: 1600, ProximaRevisaoKM: 126531, KMRodado: 787, PercMeta: 49, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 1 },
+            { Placa: "TGK5E59", Motorista: "Matheus Castanheira", Corresponsavel: "Matheus Castanheira", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 33428, MetaKM: 1600, ProximaRevisaoKM: 34100, KMRodado: 507, PercMeta: 32, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 2 },
+            { Placa: "SIR1A55", Motorista: "Willian AT", Corresponsavel: "Carlos Eduardo", Modelo: "STRADA ENDURANCE", Gerencia: "Operações Sp", Proprietario: "Locado", Status: "Disponível", KMAtual: 45200, MetaKM: 2000, ProximaRevisaoKM: 50000, KMRodado: 1850, PercMeta: 92, ClassificacaoOciosidade: "NÃO PARTICIPA", DiasParado: 0, DiasSemAbastecer: 0 },
+            { Placa: "SIV9I19", Motorista: "Andrey Elias Costa", Corresponsavel: "Juliana Paes", Modelo: "Argo Flex 1.0 4P", Gerencia: "Serviços Logística", Proprietario: "Próprio", Status: "Manutenção", KMAtual: 68100, MetaKM: 1500, ProximaRevisaoKM: 68500, KMRodado: 210, PercMeta: 14, ClassificacaoOciosidade: "MANUTENÇÃO", DiasParado: 5, DiasSemAbastecer: 4 },
+            { Placa: "SIU9I71", Motorista: "Gustavo Rocha", Corresponsavel: "Roberto Lima", Modelo: "S10 CS LS MT 4x4", Gerencia: "Campo & Obras", Proprietario: "Próprio", Status: "Disponível", KMAtual: 82300, MetaKM: 1800, ProximaRevisaoKM: 83000, KMRodado: 1720, PercMeta: 95, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 1 },
+            { Placa: "SYU3G17", Motorista: "Paulo Sérgio", Corresponsavel: "Paulo Sérgio", Modelo: "STRADA ENDURANCE CP FLEX 1.3", Gerencia: "Murilo Lopes (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 14200, MetaKM: 2000, ProximaRevisaoKM: 20000, KMRodado: 1980, PercMeta: 99, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 2 }
+        ];
+
+        const defaultKeyHistory = [
+            { id: 1, nome: "Willian AT", placa: "SIR1A55", modelo: "STRADA ENDURANCE", dataEntrega: "27/07/2026", dataDevolucao: "12/08/2026", cidade: "-", status: "Devolvido" },
+            { id: 2, nome: "Andrey Elias Costa", placa: "SIV9I19", modelo: "Argo Flex 1.0 4P", dataEntrega: "10/08/2026", dataDevolucao: "", cidade: "-", status: "Em Uso" },
+            { id: 3, nome: "Gustavo Rocha", placa: "SIU9I71", modelo: "S10 CS LS MT 4x4", dataEntrega: "13/08/2026", dataDevolucao: "13/08/2026", cidade: "-", status: "Devolvido" },
+            { id: 4, nome: "Paulo Sérgio", placa: "SYU3G17", modelo: "STRADA ENDURANCE CP FLEX 1.3", dataEntrega: "14/08/2026", dataDevolucao: "03/09/2026", cidade: "Goiânia", status: "Devolvido" }
+        ];
+
+        let fleetData = [...defaultFleetData];
+        let keyHistory = [...defaultKeyHistory];
+        let currentActiveTab = 'painel';
+        let chartStatusInstance = null;
+        let chartGerenciaInstance = null;
+
+        // TIMESTAMP MANAGEMENT
+        function saveLastUpdateTimestamp() {
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('pt-BR');
+            const formattedTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const fullTimestamp = `${formattedDate} às ${formattedTime}`;
+            
+            localStorage.setItem('fleet_last_update', fullTimestamp);
+            displayLastUpdateTimestamp();
+        }
+
+        function displayLastUpdateTimestamp() {
+            const savedTime = localStorage.getItem('fleet_last_update');
+            const label = document.getElementById('lastUpdateText');
+            if (label) {
+                label.innerText = savedTime ? `Atualização: ${savedTime}` : 'Atualização: Sem registro';
+            }
+        }
+
+        // MULTI-SELECT DROPDOWN LOGIC
+        function toggleDropdown(menuId) {
+            const menu = document.getElementById(menuId);
+            if (!menu) return;
+            const isHidden = menu.classList.contains('hidden');
+            document.querySelectorAll('.multi-select-menu').forEach(m => m.classList.add('hidden'));
+            if (isHidden) menu.classList.remove('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.multi-select-container')) {
+                document.querySelectorAll('.multi-select-menu').forEach(m => m.classList.add('hidden'));
+            }
+        });
+
+        function populateMultiSelect(menuId, labelId, defaultTitle, options) {
+            const menu = document.getElementById(menuId);
+            if (!menu) return;
+
+            const existingCheckboxes = menu.querySelectorAll('.opt-checkbox');
+            let prevChecked = null;
+            if (existingCheckboxes.length > 0) {
+                prevChecked = Array.from(existingCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+            }
+
+            let html = `
+                <label class="flex items-center gap-2 p-2 hover:bg-slate-700/60 rounded-lg cursor-pointer font-bold border-b border-slate-700/60 text-xs text-slate-200">
+                    <input type="checkbox" class="select-all rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500" onchange="toggleSelectAll('${menuId}', '${labelId}', '${defaultTitle}', this)">
+                    <span>(Selecionar Todos)</span>
+                </label>
+            `;
+
+            options.forEach(opt => {
+                const isChecked = prevChecked === null || prevChecked.includes(opt);
+                html += `
+                    <label class="flex items-center gap-2 p-1.5 hover:bg-slate-700/40 rounded-lg cursor-pointer text-xs text-slate-300">
+                        <input type="checkbox" value="${opt}" ${isChecked ? 'checked' : ''} onchange="onFilterOptionChange('${menuId}', '${labelId}', '${defaultTitle}')" class="opt-checkbox rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500">
+                        <span class="truncate">${opt}</span>
+                    </label>
+                `;
+            });
+
+            menu.innerHTML = html;
+            updateMultiSelectLabel(menuId, labelId, defaultTitle, false);
+        }
+
+        function toggleSelectAll(menuId, labelId, defaultTitle, selectAllCb) {
+            const menu = document.getElementById(menuId);
+            const checkboxes = menu.querySelectorAll('.opt-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAllCb.checked);
+            updateMultiSelectLabel(menuId, labelId, defaultTitle, true);
+        }
+
+        function onFilterOptionChange(menuId, labelId, defaultTitle) {
+            updateMultiSelectLabel(menuId, labelId, defaultTitle, true);
+        }
+
+        function updateMultiSelectLabel(menuId, labelId, defaultTitle, triggerApply = true) {
+            const menu = document.getElementById(menuId);
+            const label = document.getElementById(labelId);
+            if (!menu || !label) return;
+
+            const checkboxes = Array.from(menu.querySelectorAll('.opt-checkbox'));
+            const checked = checkboxes.filter(cb => cb.checked);
+            const selectAllCb = menu.querySelector('.select-all');
+
+            if (selectAllCb) selectAllCb.checked = (checked.length === checkboxes.length && checkboxes.length > 0);
+
+            if (checked.length === 0) label.innerText = `Nenhum selecionado`;
+            else if (checked.length === checkboxes.length) label.innerText = defaultTitle;
+            else if (checked.length === 1) label.innerText = checked[0].value;
+            else label.innerText = `${checked.length} selecionados`;
+
+            if (triggerApply) applyGlobalFilters();
+        }
+
+        function getSelectedValues(menuId) {
+            const menu = document.getElementById(menuId);
+            if (!menu) return [];
+            return Array.from(menu.querySelectorAll('.opt-checkbox:checked')).map(cb => cb.value);
+        }
+
+        function populateFilterDropdowns() {
+            const gerencias = [...new Set(fleetData.map(d => d.Gerencia).filter(Boolean))].sort();
+            const statusList = [...new Set(fleetData.map(d => d.Status).filter(Boolean))].sort();
+            const motoristas = [...new Set(fleetData.map(d => d.Motorista || 'Não atribuído'))].sort();
+            const proprietarios = [...new Set(fleetData.map(d => d.Proprietario).filter(Boolean))].sort();
+
+            populateMultiSelect('dropdownGerencia', 'labelGerencia', 'Todas as Gerências', gerencias);
+            populateMultiSelect('dropdownStatus', 'labelStatus', 'Todos os Status', statusList);
+            populateMultiSelect('dropdownMotorista', 'labelMotorista', 'Todos os Motoristas', motoristas);
+            populateMultiSelect('dropdownProprietario', 'labelProprietario', 'Todos os Proprietários', proprietarios);
+        }
+
+        function getFilteredData() {
+            const selectedGerencias = getSelectedValues('dropdownGerencia');
+            const selectedStatus = getSelectedValues('dropdownStatus');
+            const selectedMotoristas = getSelectedValues('dropdownMotorista');
+            const selectedProprietarios = getSelectedValues('dropdownProprietario');
+            const search = document.getElementById('filterSearch').value.toLowerCase();
+
+            return fleetData.filter(d => {
+                if (selectedGerencias.length > 0 && !selectedGerencias.includes(d.Gerencia)) return false;
+                if (selectedStatus.length > 0 && !selectedStatus.includes(d.Status)) return false;
+                
+                const driverVal = d.Motorista || 'Não atribuído';
+                if (selectedMotoristas.length > 0 && !selectedMotoristas.includes(driverVal)) return false;
+                if (selectedProprietarios.length > 0 && !selectedProprietarios.includes(d.Proprietario)) return false;
+
+                if (search && !d.Placa.toLowerCase().includes(search) && !d.Modelo.toLowerCase().includes(search) && !(d.Motorista || '').toLowerCase().includes(search)) return false;
+                return true;
+            });
+        }
+
+        // AUTH CONTROL
+        function handleAuthToggle() {
+            if (isAdminLoggedIn) {
+                if (confirm("Deseja sair do Modo Administrador?")) {
+                    isAdminLoggedIn = false;
+                    sessionStorage.setItem('isAdmin', 'false');
+                    applyUserRoleUI();
+                    if (currentActiveTab === 'base') switchTab('painel');
+                }
+            } else {
+                openLoginModal();
+            }
+        }
+
+        function openLoginModal() {
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('loginErrorMsg').classList.add('hidden');
+            const modal = document.getElementById('modalLogin');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeLoginModal() {
+            const modal = document.getElementById('modalLogin');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function autenticarAdmin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('adminPasswordInput').value;
+            if (pass === ADMIN_PASSWORD_HASH) {
+                isAdminLoggedIn = true;
+                sessionStorage.setItem('isAdmin', 'true');
+                closeLoginModal();
+                applyUserRoleUI();
+            } else {
+                document.getElementById('loginErrorMsg').classList.remove('hidden');
+            }
+        }
+
+        function applyUserRoleUI() {
+            const adminElements = document.querySelectorAll('.admin-only');
+            const consultaElements = document.querySelectorAll('.consulta-only');
+            const badge = document.getElementById('roleBadge');
+            const btnAuth = document.getElementById('btnAuthToggle');
+
+            if (isAdminLoggedIn) {
+                adminElements.forEach(el => el.classList.remove('hidden'));
+                consultaElements.forEach(el => el.classList.add('hidden'));
+                badge.className = "text-xs bg-indigo-500/20 text-indigo-300 font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/30 flex items-center gap-1.5";
+                badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> Modo Admin';
+                btnAuth.className = "bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-900/30 border border-rose-500/30 transition flex items-center gap-2 active:scale-95";
+                btnAuth.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> SAIR ADMIN';
+            } else {
+                adminElements.forEach(el => el.classList.add('hidden'));
+                consultaElements.forEach(el => el.classList.remove('hidden'));
+                badge.className = "text-xs bg-slate-800 text-slate-300 font-medium px-2.5 py-0.5 rounded-full border border-slate-700/60 flex items-center gap-1.5";
+                badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Modo Consulta';
+                btnAuth.className = "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 border border-indigo-400/20 transition flex items-center gap-2 active:scale-95";
+                btnAuth.innerHTML = '<i class="fa-solid fa-shield-halved"></i> ÁREA ADMIN';
+            }
+
+            renderAllViews();
+        }
+
+        // PERSISTENCE
+        function saveFleetData(data) { localStorage.setItem('fleet_data', JSON.stringify(data)); }
+        function getSavedFleetData() { try { const s = localStorage.getItem('fleet_data'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+        function saveKeyHistory(history) { localStorage.setItem('fleet_keys', JSON.stringify(history)); }
+        function getSavedKeyHistory() { try { const s = localStorage.getItem('fleet_keys'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+        function getSavedMotoristas() { try { return JSON.parse(localStorage.getItem('fleet_motoristas')) || {}; } catch(e) { return {}; } }
+        function saveMotoristasMap(map) { localStorage.setItem('fleet_motoristas', JSON.stringify(map)); }
+        function saveSingleMotorista(placa, motorista) { const map = getSavedMotoristas(); map[placa] = motorista; saveMotoristasMap(map); }
+
+        function resetBaseDados() {
+            if (!isAdminLoggedIn) return;
+            if (confirm("Resetar dados para a versão padrão inicial?")) {
+                localStorage.removeItem('fleet_data');
+                localStorage.removeItem('fleet_keys');
+                localStorage.removeItem('fleet_motoristas');
+                fleetData = [...defaultFleetData];
+                keyHistory = [...defaultKeyHistory];
+                saveLastUpdateTimestamp();
+                populateFilterDropdowns();
+                renderAllViews();
+            }
+        }
+
+        // INITIALIZATION
+        document.addEventListener('DOMContentLoaded', () => {
+            isAdminLoggedIn = sessionStorage.getItem('isAdmin') === 'true';
+
+            const savedFleet = getSavedFleetData();
+            if (savedFleet && savedFleet.length > 0) fleetData = savedFleet;
+
+            const savedKeys = getSavedKeyHistory();
+            if (savedKeys && savedKeys.length > 0) keyHistory = savedKeys;
+
+            const savedMap = getSavedMotoristas();
+            fleetData.forEach(item => {
+                if (item.DiasSemAbastecer === undefined) item.DiasSemAbastecer = item.ClassificacaoOciosidade === "SEM ABASTECIMENTO" ? 2 : 0;
+                if (savedMap[item.Placa] !== undefined && savedMap[item.Placa] !== '') {
+                    item.Motorista = savedMap[item.Placa];
+                } else if (item.Motorista) {
+                    savedMap[item.Placa] = item.Motorista;
+                }
+            });
+            saveMotoristasMap(savedMap);
+
+            displayLastUpdateTimestamp();
+            populateFilterDropdowns();
+            applyUserRoleUI();
+        });
+
+        // TAB SWITCHING
+        function switchTab(tabName) {
+            if (tabName === 'base' && !isAdminLoggedIn) {
+                alert("Acesso exclusivo para Administradores.");
+                return;
+            }
+
+            currentActiveTab = tabName;
+            ['painel', 'ficha', 'alertas', 'km', 'chaves', 'base'].forEach(t => {
+                const el = document.getElementById(`view-${t}`);
+                if (el) el.classList.toggle('hidden', t !== tabName);
+            });
+
+            const tabs = ['painel', 'ficha', 'alertas', 'km', 'chaves', 'base'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (!btn) return;
+                if (t === tabName) {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 tab-btn-active";
+                } else {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 tab-btn-default";
+                }
+            });
+
+            renderAllViews();
+        }
+
+        function applyGlobalFilters() { renderAllViews(); }
+
+        function updatePlacaDropdowns(filteredData) {
+            const selectChave = document.getElementById('chavePlaca');
+            if (!selectChave) return;
+
+            const currentSelected = selectChave.value;
+            const availablePlacas = filteredData.map(d => d.Placa);
+
+            selectChave.innerHTML = '<option value="">Selecione a Placa</option>' + 
+                availablePlacas.map(p => `<option value="${p}">${p}</option>`).join('');
+
+            if (availablePlacas.includes(currentSelected)) {
+                selectChave.value = currentSelected;
+            } else {
+                selectChave.value = '';
+                document.getElementById('chaveModelo').value = '';
+            }
+        }
+
+        function renderAllViews() {
+            const data = getFilteredData();
+            updatePlacaDropdowns(data);
+            renderPainel(data);
+            renderFichaDetails(data);
+            renderAlertas(data);
+            renderRelatorioKM(data);
+            renderChavesHistory(data);
+            if (isAdminLoggedIn) renderBaseDadosCentral(data);
+        }
+
+        function updateMotoristaInline(placa, newMotoristaName) {
+            if (!isAdminLoggedIn) return;
+            const item = fleetData.find(d => d.Placa === placa);
+            if (item) {
+                item.Motorista = newMotoristaName.trim();
+                saveSingleMotorista(placa, item.Motorista);
+                saveFleetData(fleetData);
+                saveLastUpdateTimestamp();
+                populateFilterDropdowns();
+                renderAllViews();
+            }
+        }
+
+        function updateDiasSemAbastecerInline(placa, days) {
+            if (!isAdminLoggedIn) return;
+            const item = fleetData.find(d => d.Placa === placa);
+            if (item) {
+                item.DiasSemAbastecer = parseInt(days) || 0;
+                saveFleetData(fleetData);
+                saveLastUpdateTimestamp();
+                renderAllViews();
+            }
+        }
+
+        // 1. PAINEL GERAL
+        function renderPainel(data) {
+            document.getElementById('kpi-total').innerText = data.length;
+            document.getElementById('kpi-disponivel').innerText = data.filter(d => d.Status === 'Disponível').length;
+            document.getElementById('kpi-manutencao').innerText = data.filter(d => d.Status === 'Manutenção').length;
+            
+            const totalKM = data.reduce((sum, d) => sum + (Number(d.KMRodado) || 0), 0);
+            document.getElementById('kpi-km').innerText = totalKM.toLocaleString('pt-BR') + ' km';
+
+            const comMotorista = data.filter(d => d.Motorista && d.Motorista.trim() !== '').length;
+            document.getElementById('kpi-motoristas').innerText = comMotorista;
+
+            const tbody = document.getElementById('tablePainelBody');
+            tbody.innerHTML = data.map(d => `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="p-3.5 font-bold text-white">${d.Placa}</td>
+                    <td class="p-3.5 font-semibold text-amber-200 bg-amber-500/10 border-x border-amber-500/20">${d.Motorista || '<span class="text-slate-500 italic">Não atribuído</span>'}</td>
+                    <td class="p-3.5 text-slate-400">${d.Corresponsavel || '-'}</td>
+                    <td class="p-3.5 font-medium">${d.Modelo}</td>
+                    <td class="p-3.5">${d.Gerencia}</td>
+                    <td class="p-3.5">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-bold ${d.Status === 'Disponível' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
+                            ${d.Status}
+                        </span>
+                    </td>
+                    <td class="p-3.5 font-medium">${(d.KMRodado || 0).toLocaleString('pt-BR')} km</td>
+                    <td class="p-3.5 font-bold text-indigo-400">${d.PercMeta || 0}%</td>
+                </tr>
+            `).join('');
+
+            renderCharts(data);
+        }
+
+        function renderCharts(data) {
+            const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+            const dispCount = data.filter(d => d.Status === 'Disponível').length;
+            const manutCount = data.filter(d => d.Status === 'Manutenção').length;
+
+            if (chartStatusInstance) chartStatusInstance.destroy();
+            chartStatusInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: { 
+                    labels: ['Disponível', 'Manutenção'], 
+                    datasets: [{ 
+                        data: [dispCount, manutCount], 
+                        backgroundColor: ['#10B981', '#F59E0B'],
+                        borderWidth: 0
+                    }] 
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', weight: 'bold' } } }
+                    }
+                }
+            });
+
+            const ctxGerencia = document.getElementById('chartGerencia').getContext('2d');
+            const gerenciaCounts = {};
+            data.forEach(d => { gerenciaCounts[d.Gerencia] = (gerenciaCounts[d.Gerencia] || 0) + 1; });
+
+            if (chartGerenciaInstance) chartGerenciaInstance.destroy();
+            chartGerenciaInstance = new Chart(ctxGerencia, {
+                type: 'bar',
+                data: { 
+                    labels: Object.keys(gerenciaCounts), 
+                    datasets: [{ 
+                        label: 'Veículos', 
+                        data: Object.values(gerenciaCounts), 
+                        backgroundColor: '#6366f1',
+                        borderRadius: 8
+                    }] 
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        // 2. FICHA
+        function renderFichaDetails(data) {
+            const select = document.getElementById('selectFichaPlaca');
+            if (!select) return;
+
+            const currentVal = select.value;
+            const filteredPlacas = (data || fleetData).map(d => d.Placa);
+            select.innerHTML = filteredPlacas.map(p => `<option value="${p}">${p}</option>`).join('');
+
+            if (filteredPlacas.includes(currentVal)) select.value = currentVal;
+            else if (filteredPlacas.length > 0) select.value = filteredPlacas[0];
+            else {
+                document.getElementById('fichaDetailContainer').innerHTML = `<div class="col-span-3 glass-panel p-6 rounded-2xl text-center text-slate-400 font-medium">Nenhum veículo localizado.</div>`;
+                return;
+            }
+
+            const placa = select.value;
+            const v = fleetData.find(d => d.Placa === placa);
+            const container = document.getElementById('fichaDetailContainer');
+            if (!v) { container.innerHTML = ''; return; }
+
+            const precisaAbastecer = (v.DiasSemAbastecer >= 2) || (v.ClassificacaoOciosidade === "SEM ABASTECIMENTO");
+
+            container.innerHTML = `
+                <div class="glass-panel p-6 rounded-2xl space-y-4 md:col-span-1 border-indigo-500/20">
+                    <div class="border-b border-slate-800 pb-3">
+                        <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Identificação Central</span>
+                        <h2 class="text-3xl font-black text-white mt-1">${v.Placa}</h2>
+                        <p class="text-sm font-semibold text-slate-400">${v.Modelo}</p>
+                    </div>
+                    <div class="space-y-3 text-xs">
+                        <div class="bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
+                            <span class="text-amber-300 font-bold block mb-0.5">Motorista Atribuído:</span>
+                            <span class="text-white font-extrabold text-sm">${v.Motorista || 'Não atribuído'}</span>
+                        </div>
+                        <div><span class="text-slate-500 block">Corresponsável:</span> <span class="font-semibold text-slate-300">${v.Corresponsavel || '-'}</span></div>
+                        <div><span class="text-slate-500 block">Gerência:</span> <span class="font-semibold text-slate-300">${v.Gerencia}</span></div>
+                        <div><span class="text-slate-500 block">Proprietário:</span> <span class="font-semibold text-slate-300">${v.Proprietario}</span></div>
+                        <div>
+                            <span class="text-slate-500 block mb-1">Status de Operação:</span> 
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${v.Status === 'Disponível' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">${v.Status}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl space-y-4 md:col-span-2">
+                    <h3 class="font-bold text-sm text-slate-200 border-b border-slate-800 pb-2 flex items-center justify-between">
+                        <span>Indicadores Operacionais e Alertas</span>
+                        ${precisaAbastecer ? '<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-2.5 py-1 rounded-full"><i class="fa-solid fa-gas-pump mr-1"></i> Alerta de Abastecimento (≥ 2 Dias)</span>' : '<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-1 rounded-full"><i class="fa-solid fa-check mr-1"></i> Abastecimento em Dia</span>'}
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3.5 text-xs">
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">KM Atual</p><p class="text-lg font-black text-white mt-1">${v.KMAtual.toLocaleString('pt-BR')} km</p></div>
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">Próxima Revisão</p><p class="text-lg font-black text-indigo-400 mt-1">${v.ProximaRevisaoKM.toLocaleString('pt-BR')} km</p></div>
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">Meta Mensal</p><p class="text-lg font-black text-slate-200 mt-1">${v.MetaKM} km</p></div>
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">KM Rodado</p><p class="text-lg font-black text-cyan-400 mt-1">${(v.KMRodado || 0).toLocaleString('pt-BR')} km</p></div>
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">Dias Sem Abastecer</p><p class="text-lg font-black ${precisaAbastecer ? 'text-rose-400' : 'text-emerald-400'} mt-1">${v.DiasSemAbastecer || 0} dia(s)</p></div>
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">Dias Parado</p><p class="text-lg font-black text-amber-400 mt-1">${v.DiasParado || 0} dias</p></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 3. ALERTAS
+        function renderAlertas(data) {
+            const tbody = document.getElementById('tableAlertasBody');
+            let fuelAlertCount = 0;
+            let totalAlerts = 0;
+
+            tbody.innerHTML = data.map(d => {
+                const diff = (d.ProximaRevisaoKM || 0) - (d.KMAtual || 0);
+                const diasAbastecer = d.DiasSemAbastecer !== undefined ? d.DiasSemAbastecer : (d.ClassificacaoOciosidade === "SEM ABASTECIMENTO" ? 2 : 0);
+                const requerAbastecimento = diasAbastecer >= 2 || d.ClassificacaoOciosidade === "SEM ABASTECIMENTO";
+
+                if (requerAbastecimento) fuelAlertCount++;
+                if (requerAbastecimento || diff < 1000 || d.Status === 'Manutenção' || d.DiasParado > 0) totalAlerts++;
+
+                return `
+                    <tr class="${requerAbastecimento ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'hover:bg-slate-800/40'} transition border-b border-slate-800/60">
+                        <td class="p-3.5 font-bold text-white">${d.Placa}</td>
+                        <td class="p-3.5 font-semibold text-amber-200 bg-amber-500/10 border-x border-amber-500/20">${d.Motorista || '-'}</td>
+                        <td class="p-3.5 font-medium">${d.Modelo}</td>
+                        <td class="p-3.5">
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${d.Status === 'Disponível' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">${d.Status}</span>
+                        </td>
+                        <td class="p-3.5 text-center">
+                            ${requerAbastecimento ? `
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
+                                    <i class="fa-solid fa-gas-pump"></i> AVISO: ${diasAbastecer} dia(s) s/ abastecer
+                                </span>
+                            ` : `
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <i class="fa-solid fa-check"></i> Em dia
+                                </span>
+                            `}
+                        </td>
+                        <td class="p-3.5 font-medium">${d.KMAtual.toLocaleString('pt-BR')} km</td>
+                        <td class="p-3.5 font-medium">${d.ProximaRevisaoKM.toLocaleString('pt-BR')} km</td>
+                        <td class="p-3.5 font-extrabold ${diff < 1000 ? 'text-rose-400' : 'text-slate-300'}">${diff.toLocaleString('pt-BR')} km</td>
+                        <td class="p-3.5 font-extrabold ${d.DiasParado > 0 ? 'text-amber-400' : 'text-slate-500'}">${d.DiasParado} dias</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // ATUALIZA CONTADORES DO PAINEL
+            document.getElementById('fuelAlertCount').innerText = `${fuelAlertCount} Veículo(s)`;
+            const badgeCount = document.getElementById('alertBadgeCount');
+            if (badgeCount) {
+                badgeCount.innerText = totalAlerts;
+                badgeCount.classList.toggle('hidden', totalAlerts === 0);
+            }
+        }
+
+        // 4. HELPER FORMATAÇÃO DE OCIOSIDADE / STATUS COM ALERTAS
+        function getOciosidadeBadge(status) {
+            const s = (status || 'NORMAL').toUpperCase();
+            let colorClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+            
+            if (s.includes('MANUTENÇ') || s.includes('CRÍTICO')) {
+                colorClass = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+            } else if (s.includes('SEM ABASTEC') || s.includes('ALERT')) {
+                colorClass = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+            } else if (s.includes('META NÃO') || s.includes('ATENÇÃO') || s.includes('RISCO')) {
+                colorClass = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+            } else if (s.includes('NÃO PARTICIPA')) {
+                colorClass = 'bg-slate-800 text-slate-400 border-slate-700';
+            }
+            
+            return `<span class="inline-block whitespace-normal break-words text-center leading-tight px-2.5 py-1 rounded-lg text-[11px] font-extrabold border ${colorClass} min-w-[130px] max-w-[180px]">${s}</span>`;
+        }
+
+        // 4. RELATÓRIO KM
+        function renderRelatorioKM(data) {
+            const tbody = document.getElementById('tableKMBody');
+            tbody.innerHTML = data.map(d => `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="p-3.5 font-bold text-white">${d.Placa}</td>
+                    <td class="p-3.5 font-semibold text-amber-200 bg-amber-500/10 border-x border-amber-500/20">${d.Motorista || '-'}</td>
+                    <td class="p-3.5">${d.Corresponsavel || '-'}</td>
+                    <td class="p-3.5 font-medium">${d.Modelo}</td>
+                    <td class="p-3.5">${d.Gerencia}</td>
+                    <td class="p-3.5 font-medium">${d.MetaKM} km</td>
+                    <td class="p-3.5 font-bold text-emerald-400">${(d.KMRodado || 0).toLocaleString('pt-BR')} km</td>
+                    <td class="p-3.5 font-bold text-indigo-400">${d.PercMeta || 0}%</td>
+                    <td class="p-3.5">${getOciosidadeBadge(d.ClassificacaoOciosidade)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // 5. CHAVES
+        function autoFillChaveModelo() {
+            const placa = document.getElementById('chavePlaca').value;
+            const inputModelo = document.getElementById('chaveModelo');
+            const v = fleetData.find(d => d.Placa === placa);
+
+            if (v) {
+                inputModelo.value = v.Modelo;
+                if (v.Motorista && !document.getElementById('chaveNome').value) {
+                    document.getElementById('chaveNome').value = v.Motorista;
+                }
+            } else {
+                inputModelo.value = '';
+            }
+        }
+
+        function handleRegistrarChave(e) {
+            e.preventDefault();
+            if (!isAdminLoggedIn) return;
+
+            const nome = document.getElementById('chaveNome').value;
+            const placa = document.getElementById('chavePlaca').value;
+            const modelo = document.getElementById('chaveModelo').value;
+            const dataEntrega = document.getElementById('chaveDataEntrega').value;
+            const dataDevolucao = document.getElementById('chaveDataDevolucao').value;
+            const cidade = document.getElementById('chaveCidade').value || '-';
+
+            const formattedEntrega = dataEntrega ? dataEntrega.split('-').reverse().join('/') : '-';
+            const formattedDevolucao = dataDevolucao ? dataDevolucao.split('-').reverse().join('/') : '';
+
+            keyHistory.unshift({
+                id: Date.now(),
+                nome: nome,
+                placa: placa,
+                modelo: modelo,
+                dataEntrega: formattedEntrega,
+                dataDevolucao: formattedDevolucao || '',
+                cidade: cidade,
+                status: dataDevolucao ? 'Devolvido' : 'Em Uso'
+            });
+
+            saveKeyHistory(keyHistory);
+            saveLastUpdateTimestamp();
+            renderChavesHistory(getFilteredData());
+            document.getElementById('formChaves').reset();
+        }
+
+        function updateDataDevolucaoInline(id, dateValueISO) {
+            if (!isAdminLoggedIn) return;
+            const record = keyHistory.find(k => k.id === id);
+            if (record) {
+                if (dateValueISO) {
+                    const parts = dateValueISO.split('-');
+                    record.dataDevolucao = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                    record.status = 'Devolvido';
+                } else {
+                    record.dataDevolucao = '';
+                    record.status = 'Em Uso';
+                }
+                saveKeyHistory(keyHistory);
+                saveLastUpdateTimestamp();
+                renderChavesHistory(getFilteredData());
+            }
+        }
+
+        function renderChavesHistory(data) {
+            const filteredPlacas = new Set((data || fleetData).map(d => d.Placa.toLowerCase()));
+            const filteredKeys = keyHistory.filter(k => filteredPlacas.has(k.placa.toLowerCase()));
+            const tbody = document.getElementById('tableChavesHistoryBody');
+
+            if (filteredKeys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500 italic">Nenhum registro de chave localizado.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filteredKeys.map(k => {
+                let dateDevInput = k.dataDevolucao;
+                if (k.dataDevolucao && k.dataDevolucao.includes('/')) {
+                    const p = k.dataDevolucao.split('/');
+                    dateDevInput = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+                }
+
+                return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="p-3.5 font-bold text-white">${k.nome}</td>
+                        <td class="p-3.5 font-black text-indigo-400">${k.placa}</td>
+                        <td class="p-3.5 font-medium text-slate-400">${k.modelo}</td>
+                        <td class="p-3.5">${k.dataEntrega}</td>
+                        <td class="p-2 bg-amber-500/10 border-x border-amber-500/20">
+                            ${isAdminLoggedIn ? `
+                                <input type="date" value="${dateDevInput || ''}" onchange="updateDataDevolucaoInline(${k.id}, this.value)" class="bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-200 focus:ring-2 focus:ring-amber-500">
+                            ` : `
+                                <span class="font-semibold text-slate-300">${k.dataDevolucao || '-'}</span>
+                            `}
+                        </td>
+                        <td class="p-3.5">${k.cidade}</td>
+                        <td class="p-3.5">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${k.status === 'Devolvido' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
+                                ${k.status}
+                            </span>
+                        </td>
+                        ${isAdminLoggedIn ? `
+                            <td class="p-3.5 text-center admin-only">
+                                <button onclick="excluirChave(${k.id})" class="text-rose-400 hover:text-rose-300 p-1.5 transition" title="Excluir"><i class="fa-solid fa-trash-can"></i></button>
+                            </td>
+                        ` : ''}
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function excluirChave(id) {
+            if (!isAdminLoggedIn) return;
+            if (confirm('Excluir este registro?')) {
+                keyHistory = keyHistory.filter(k => k.id !== id);
+                saveKeyHistory(keyHistory);
+                saveLastUpdateTimestamp();
+                renderChavesHistory(getFilteredData());
+            }
+        }
+
+        // 6. BASE CENTRAL
+        function renderBaseDadosCentral(data) {
+            document.getElementById('baseRowCount').innerText = `${data.length} registros`;
+            const tbody = document.getElementById('tableBaseBody');
+
+            tbody.innerHTML = data.map(d => `
+                <tr class="hover:bg-slate-800/40 border-b border-slate-800">
+                    <td class="p-3.5 font-black text-indigo-400 bg-slate-900">${d.Placa}</td>
+                    <td class="p-2 bg-amber-500/10 border-x border-amber-500/20">
+                        <input type="text" value="${d.Motorista || ''}" placeholder="Motorista..." onchange="updateMotoristaInline('${d.Placa}', this.value)" class="w-full bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1.5 text-xs font-bold text-amber-200 focus:ring-2 focus:ring-amber-500">
+                    </td>
+                    <td class="p-3.5 text-slate-400">${d.Corresponsavel || '-'}</td>
+                    <td class="p-3.5 font-medium">${d.Modelo}</td>
+                    <td class="p-3.5">${d.Gerencia}</td>
+                    <td class="p-3.5">${d.Proprietario}</td>
+                    <td class="p-3.5"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${d.Status === 'Disponível' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">${d.Status}</span></td>
+                    <td class="p-2">
+                        <input type="number" value="${d.DiasSemAbastecer || 0}" min="0" onchange="updateDiasSemAbastecerInline('${d.Placa}', this.value)" class="w-20 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-white text-center focus:ring-2 focus:ring-indigo-500">
+                    </td>
+                    <td class="p-3.5 font-medium">${d.KMAtual.toLocaleString('pt-BR')} km</td>
+                    <td class="p-3.5 font-medium">${d.MetaKM} km</td>
+                    <td class="p-3.5 font-bold text-emerald-400">${(d.KMRodado || 0).toLocaleString('pt-BR')} km</td>
+                    <td class="p-3.5 font-bold text-indigo-400">${d.PercMeta || 0}%</td>
+                    <td class="p-3.5 font-medium">${d.DiasParado}</td>
+                </tr>
+            `).join('');
+        }
+
+        // CSV UPLOAD
+        function handleCSVUpload(e) {
+            if (!isAdminLoggedIn) return;
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) { parseCSVData(event.target.result); };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseCSVData(text) {
+            const lines = text.split('\n').filter(l => l.trim() !== '');
+            if (lines.length < 2) return;
+
+            const delimiter = lines[0].includes(';') ? ';' : ',';
+            const headers = lines[0].split(delimiter).map(h => h.replace(/"/g, '').trim());
+            const savedMap = getSavedMotoristas();
+            const newFleet = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i].split(delimiter).map(c => c.replace(/"/g, '').trim());
+                if (row.length < 2) continue;
+
+                const getVal = (colName) => {
+                    const idx = headers.findIndex(h => h.toLowerCase() === colName.toLowerCase());
+                    return idx !== -1 ? row[idx] : '';
+                };
+
+                const placa = getVal('Placa');
+                if (!placa) continue;
+
+                const corresponsavel = getVal('Corresponsável') || getVal('Corresponsavel');
+                const motoristaCSV = getVal('Motorista') || getVal('Responsável') || corresponsavel;
+
+                let motoristaFinal = savedMap[placa];
+                if (!motoristaFinal || motoristaFinal.trim() === '') {
+                    motoristaFinal = motoristaCSV;
+                    if (motoristaFinal) savedMap[placa] = motoristaFinal;
+                }
+
+                newFleet.push({
+                    Placa: placa,
+                    Motorista: motoristaFinal || '',
+                    Corresponsavel: corresponsavel,
+                    Modelo: getVal('Modelo') || 'N/I',
+                    Gerencia: getVal('Gerência') || getVal('Gerencia') || 'Geral',
+                    Proprietario: getVal('Proprietário') || 'Próprio',
+                    Status: getVal('Status') || 'Disponível',
+                    KMAtual: parseInt(getVal('KM Atual')) || 0,
+                    MetaKM: parseInt(getVal('Meta KM')) || 1600,
+                    ProximaRevisaoKM: parseInt(getVal('Próxima Revisão KM')) || 0,
+                    KMRodado: parseFloat(getVal('KM Rodado')) || 0,
+                    PercMeta: parseFloat(getVal('% Meta')) || 0,
+                    ClassificacaoOciosidade: getVal('Classificação Ociosidade') || 'NORMAL',
+                    DiasParado: parseInt(getVal('Dias Parado')) || 0,
+                    DiasSemAbastecer: parseInt(getVal('Dias Sem Abastecer')) || (getVal('Classificação Ociosidade') === "SEM ABASTECIMENTO" ? 2 : 0)
+                });
+            }
+
+            if (newFleet.length > 0) {
+                fleetData = newFleet;
+                saveFleetData(fleetData);
+                saveMotoristasMap(savedMap);
+                saveLastUpdateTimestamp();
+                populateFilterDropdowns();
+                renderAllViews();
+                alert(`Base carregada com sucesso! (${newFleet.length} veículos)`);
+            }
+        }
+
+        // EXPORT CSV
+        function exportCSVWithMotoristas() {
+            let csv = "Placa;Motorista;Corresponsável;Modelo;Gerência;Proprietário;Status;Dias Sem Abastecer;KM Atual;Meta KM;Próxima Revisão KM;KM Rodado;% Meta;Classificação Ociosidade;Dias Parado\n";
+            fleetData.forEach(d => {
+                csv += `"${d.Placa}";"${d.Motorista || ''}";"${d.Corresponsavel || ''}";"${d.Modelo}";"${d.Gerencia}";"${d.Proprietario}";"${d.Status}";"${d.DiasSemAbastecer || 0}";"${d.KMAtual}";"${d.MetaKM}";"${d.ProximaRevisaoKM}";"${d.KMRodado}";"${d.PercMeta}";"${d.ClassificacaoOciosidade}";"${d.DiasParado}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'frota_controle_pro.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
