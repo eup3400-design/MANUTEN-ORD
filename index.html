@@ -600,7 +600,7 @@
 
                 if (error) throw error;
 
-                if (data) {
+                if (data && data.length > 0) {
                     fleetData = data.map(v => ({
                         Placa: v.placa,
                         Motorista: v.motorista || '',
@@ -618,6 +618,17 @@
                         DiasParado: v.dias_parado || 0,
                         DiasSemAbastecer: v.dias_sem_abastecer || 0
                     }));
+                } else {
+                    // Se o banco estiver vazio para esta gerência, insere os dados padrão iniciais
+                    const dbVeiculos = defaultFleetData.map(v => ({
+                        placa: v.Placa, motorista: v.Motorista, corresponsavel: v.Corresponsavel,
+                        modelo: v.Modelo, gerencia: v.Gerencia, proprietario: v.Proprietario,
+                        status: v.Status, km_atual: v.KMAtual, meta_km: v.MetaKM,
+                        proxima_revisao_km: v.ProximaRevisaoKM, km_rodado: v.KMRodado,
+                        perc_meta: v.PercMeta, classificacao_ociosidade: v.ClassificacaoOciosidade,
+                        dias_parado: v.DiasParado, dias_sem_abastecer: v.DiasSemAbastecer
+                    }));
+                    await _supabase.from('veiculos').upsert(dbVeiculos, { onConflict: 'placa' });
                 }
             } catch (e) {
                 console.warn('Usando dados locais/padrão filtrados:', e.message);
@@ -1336,7 +1347,7 @@
                         <td class="p-3.5">${k.dataEntrega}</td>
                         <td class="p-2 bg-amber-500/10 border-x border-amber-500/20">
                             ${isAdminLoggedIn ? `
-                                <input type="date" value="${dateDevInput || ''}" onchange="updateDataDevolucaoInline(${k.id}, this.value)" class="bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-200 focus:ring-2 focus:ring-amber-500">
+                                <input type="date" value="${dateDevInput \vert{}\vert{} ''}" onchange="updateDataDevolucaoInline(${k.id}, this.value)" class="bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-200 focus:ring-2 focus:ring-amber-500">
                             ` : `
                                 <span class="font-semibold text-slate-300">${k.dataDevolucao || '-'}</span>
                             `}
@@ -1400,7 +1411,7 @@
             `).join('');
         }
 
-        // CSV UPLOAD
+        // CSV UPLOAD CORRIGIDO COM PERSISTÊNCIA NO SUPABASE
         function handleCSVUpload(e) {
             if (!isAdminLoggedIn) return;
             const file = e.target.files[0];
@@ -1409,6 +1420,9 @@
             const reader = new FileReader();
             reader.onload = function(event) { parseCSVData(event.target.result); };
             reader.readAsText(file, 'UTF-8');
+            
+            // Limpa o valor do input file para permitir re-importar o mesmo arquivo se necessário
+            e.target.value = '';
         }
 
         async function parseCSVData(text) {
@@ -1499,13 +1513,24 @@
                         dias_parado: v.DiasParado,
                         dias_sem_abastecer: v.DiasSemAbastecer
                     }));
-                    await _supabase.from('veiculos').upsert(dbObjects);
-                } catch(e) { console.error('Erro ao subir CSV para Supabase:', e); }
+                    
+                    // Salva os dados permanentemente no Supabase (com conflito na coluna placa)
+                    const { error: upsertError } = await _supabase
+                        .from('veiculos')
+                        .upsert(dbObjects, { onConflict: 'placa' });
+
+                    if (upsertError) throw upsertError;
+
+                } catch(e) { 
+                    console.error('Erro ao salvar nova base no Supabase:', e);
+                    alert('Erro ao persistir dados no banco de dados remoto: ' + e.message);
+                    return;
+                }
 
                 saveLastUpdateTimestamp();
                 populateFilterDropdowns();
                 renderAllViews();
-                alert(`Base carregada com sucesso! Os motoristas cadastrados foram mantidos.`);
+                alert(`Base carregada e salva no banco de dados com sucesso!`);
             } else {
                 alert('Nenhum veículo encontrado no CSV para a gerência "Itamar Albuquerque (MOR)".');
             }
