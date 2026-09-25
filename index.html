@@ -1489,7 +1489,7 @@
             const reader = new FileReader();
             reader.onload = function(event) { parseCSVData(event.target.result); };
             reader.readAsText(file, 'UTF-8');
-            e.target.value = ''; 
+            e.target.value = ''; // Limpa o input para permitir reenvio do mesmo arquivo
         }
 
         async function parseCSVData(text) {
@@ -1515,6 +1515,7 @@
 
                 const gerenciaCSV = getVal('Gerência') || getVal('Gerencia') || 'Itamar Albuquerque (MOR)';
                 
+                // Filtra para aceitar apenas registros pertencentes a esta gerência
                 if (gerenciaCSV !== 'Itamar Albuquerque (MOR)') continue;
 
                 const corresponsavel = getVal('Corresponsável') || getVal('Corresponsavel');
@@ -1560,6 +1561,7 @@
                         if (error) throw error;
                     }
 
+                    // Atualiza dados locais e sincroniza
                     await fetchFleetDataFromSupabase();
                     saveMotoristasMap(savedMap);
                     saveLastUpdateTimestamp();
