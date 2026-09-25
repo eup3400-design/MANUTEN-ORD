@@ -600,7 +600,7 @@
 
                 if (error) throw error;
 
-                if (data) {
+                if (data && data.length > 0) {
                     fleetData = data.map(v => ({
                         Placa: v.placa,
                         Motorista: v.motorista || '',
@@ -1336,7 +1336,7 @@
                         <td class="p-3.5">${k.dataEntrega}</td>
                         <td class="p-2 bg-amber-500/10 border-x border-amber-500/20">
                             ${isAdminLoggedIn ? `
-                                <input type="date" value="${dateDevInput || ''}" onchange="updateDataDevolucaoInline(${k.id}, this.value)" class="bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-200 focus:ring-2 focus:ring-amber-500">
+                                <input type="date" value="${dateDevInput \vert{}\vert{} ''}" onchange="updateDataDevolucaoInline(${k.id}, this.value)" class="bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-200 focus:ring-2 focus:ring-amber-500">
                             ` : `
                                 <span class="font-semibold text-slate-300">${k.dataDevolucao || '-'}</span>
                             `}
@@ -1400,7 +1400,7 @@
             `).join('');
         }
 
-        // CSV UPLOAD
+        // CSV UPLOAD & CORREÇÃO DE PERSISTÊNCIA DIRETA NO SUPABASE
         function handleCSVUpload(e) {
             if (!isAdminLoggedIn) return;
             const file = e.target.files[0];
@@ -1418,7 +1418,7 @@
             const delimiter = lines[0].includes(';') ? ';' : ',';
             const headers = lines[0].split(delimiter).map(h => h.replace(/"/g, '').trim());
             const savedMap = getSavedMotoristas();
-            const newFleet = [];
+            const newFleetForSupabase = [];
 
             for (let i = 1; i < lines.length; i++) {
                 const row = lines[i].split(delimiter).map(c => c.replace(/"/g, '').trim());
@@ -1440,11 +1440,8 @@
                 const corresponsavel = getVal('Corresponsável') || getVal('Corresponsavel');
                 const motoristaCSV = getVal('Motorista') || getVal('Responsável') || corresponsavel;
 
-                // 1. Procura se o veículo já existe no sistema atual
-                const existingVehicle = fleetData.find(v => v.Placa === placa);
-
-                // 2. Preservação do motorista: Prioriza dados locais/Supabase antes do CSV
                 let motoristaFinal = '';
+                const existingVehicle = fleetData.find(v => v.Placa === placa);
                 if (existingVehicle && existingVehicle.Motorista && existingVehicle.Motorista.trim() !== '') {
                     motoristaFinal = existingVehicle.Motorista;
                 } else if (savedMap[placa] && savedMap[placa].trim() !== '') {
@@ -1457,55 +1454,43 @@
                     savedMap[placa] = motoristaFinal;
                 }
 
-                newFleet.push({
-                    Placa: placa,
-                    Motorista: motoristaFinal || '',
-                    Corresponsavel: corresponsavel,
-                    Modelo: getVal('Modelo') || 'N/I',
-                    Gerencia: gerenciaCSV,
-                    Proprietario: getVal('Proprietário') || 'Próprio',
-                    Status: getVal('Status') || 'Disponível',
-                    KMAtual: parseInt(getVal('KM Atual')) || 0,
-                    MetaKM: parseInt(getVal('Meta KM')) || 1600,
-                    ProximaRevisaoKM: parseInt(getVal('Próxima Revisão KM')) || 0,
-                    KMRodado: parseFloat(getVal('KM Rodado')) || 0,
-                    PercMeta: parseFloat(getVal('% Meta')) || 0,
-                    ClassificacaoOciosidade: getVal('Classificação Ociosidade') || 'NORMAL',
-                    DiasParado: parseInt(getVal('Dias Parado')) || 0,
-                    DiasSemAbastecer: parseInt(getVal('Dias Sem Abastecer')) || (getVal('Classificação Ociosidade') === "SEM ABASTECIMENTO" ? 2 : 0)
+                newFleetForSupabase.push({
+                    placa: placa,
+                    motorista: motoristaFinal || '',
+                    corresponsavel: corresponsavel,
+                    modelo: getVal('Modelo') || 'N/I',
+                    gerencia: gerenciaCSV,
+                    proprietario: getVal('Proprietário') || 'Próprio',
+                    status: getVal('Status') || 'Disponível',
+                    km_atual: parseInt(getVal('KM Atual')) || 0,
+                    meta_km: parseInt(getVal('Meta KM')) || 1600,
+                    proxima_revisao_km: parseInt(getVal('Próxima Revisão KM')) || 0,
+                    km_rodado: parseFloat(getVal('KM Rodado')) || 0,
+                    perc_meta: parseFloat(getVal('% Meta')) || 0,
+                    classificacao_ociosidade: getVal('Classificação Ociosidade') || 'NORMAL',
+                    dias_parado: parseInt(getVal('Dias Parado')) || 0,
+                    dias_sem_abastecer: parseInt(getVal('Dias Sem Abastecer')) || (getVal('Classificação Ociosidade') === "SEM ABASTECIMENTO" ? 2 : 0)
                 });
             }
 
-            if (newFleet.length > 0) {
-                fleetData = newFleet;
-                saveFleetData(fleetData);
-                saveMotoristasMap(savedMap);
-
+            if (newFleetForSupabase.length > 0) {
                 try {
-                    const dbObjects = newFleet.map(v => ({
-                        placa: v.Placa,
-                        motorista: v.Motorista,
-                        corresponsavel: v.Corresponsavel,
-                        modelo: v.Modelo,
-                        gerencia: v.Gerencia,
-                        proprietario: v.Proprietario,
-                        status: v.Status,
-                        km_atual: v.KMAtual,
-                        meta_km: v.MetaKM,
-                        proxima_revisao_km: v.ProximaRevisaoKM,
-                        km_rodado: v.KMRodado,
-                        perc_meta: v.PercMeta,
-                        classificacao_ociosidade: v.ClassificacaoOciosidade,
-                        dias_parado: v.DiasParado,
-                        dias_sem_abastecer: v.DiasSemAbastecer
-                    }));
-                    await _supabase.from('veiculos').upsert(dbObjects);
-                } catch(e) { console.error('Erro ao subir CSV para Supabase:', e); }
+                    // Executa o upsert diretamente no Supabase baseado na placa
+                    const { error } = await _supabase.from('veiculos').upsert(newFleetForSupabase, { onConflict: 'placa' });
+                    if (error) throw error;
 
-                saveLastUpdateTimestamp();
-                populateFilterDropdowns();
-                renderAllViews();
-                alert(`Base carregada com sucesso! Os motoristas cadastrados foram mantidos.`);
+                    // Recarrega os dados atualizados diretamente do banco de dados do Supabase
+                    await fetchFleetDataFromSupabase();
+                    saveMotoristasMap(savedMap);
+                    saveLastUpdateTimestamp();
+                    populateFilterDropdowns();
+                    renderAllViews();
+                    
+                    alert('Base importada e salva com sucesso no Supabase!');
+                } catch(e) {
+                    console.error('Erro ao salvar no Supabase:', e.message);
+                    alert('Erro ao persistir dados no Supabase. Verifique sua conexão ou as políticas de segurança da tabela.');
+                }
             } else {
                 alert('Nenhum veículo encontrado no CSV para a gerência "Itamar Albuquerque (MOR)".');
             }
