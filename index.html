@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Frota Manutenção RD - Dashboard de Gestão de Frota</title>
 
-    <!-- Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -73,6 +70,7 @@
             background: rgba(51, 65, 85, 0.8);
             color: #f8fafc;
         }
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -497,7 +495,7 @@
                     <div class="p-3 bg-amber-500/20 text-amber-400 rounded-xl"><i class="fa-solid fa-pen-to-square text-xl"></i></div>
                     <div>
                         <h4 class="font-bold text-amber-200 text-sm">Edição Direta da Frota</h4>
-                        <p class="text-xs text-slate-300">Altere o motorista ou dias sem abastecer diretamente na tabela abaixo. Os dados ficam salvos automaticamente.</p>
+                        <p class="text-xs text-slate-300">Altere o motorista ou dados diretamente na tabela abaixo. Salve ou baixe a versão em CSV.</p>
                     </div>
                 </div>
                 <button onclick="exportCSVWithMotoristas()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-900/30">
@@ -521,7 +519,7 @@
                                 <th class="p-3.5">Gerência</th>
                                 <th class="p-3.5">Proprietário</th>
                                 <th class="p-3.5">Status</th>
-                                <th class="p-3.5 min-w-[140px]">✏️ Dias s/ Abastecer</th>
+                                <th class="p-3.5">Dias s/ Abastecer</th>
                                 <th class="p-3.5">KM Atual</th>
                                 <th class="p-3.5">Meta KM</th>
                                 <th class="p-3.5">KM Rodado</th>
@@ -562,75 +560,42 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT & LOGIC WITH PERSISTENCE -->
+    <!-- JAVASCRIPT & LOGIC -->
     <script>
-        const SUPABASE_URL = "https://sjkvclxhuuioeitkghgs.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqa3ZjbHhodXVpb2VpdGtnaGdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjE5NjUsImV4cCI6MjEwNTEzNzk2NX0.c1k6ktWNEC1Iw-2kLa-e6jdVfRYPfF39iMs75LZPlF4";
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         const ADMIN_PASSWORD_HASH = "admin123";
         let isAdminLoggedIn = false;
 
+        // DADOS PADRÃO DE FROTA COM DIAS SEM ABASTECER
         const defaultFleetData = [
-            { Placa: "SCH4B28", Motorista: "Fernando Souto", Corresponsavel: "Fernando Souto", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (MOR)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 95260, MetaKM: 1600, ProximaRevisaoKM: 105206, KMRodado: 0, PercMeta: 0, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 3 },
-            { Placa: "TGK5E59", Motorista: "Matheus Castanheira", Corresponsavel: "Matheus Castanheira", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (MOR)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 33428, MetaKM: 1600, ProximaRevisaoKM: 34100, KMRodado: 507, PercMeta: 32, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 2 }
+            { Placa: "SCH4B28", Motorista: "Fernando Souto", Corresponsavel: "Fernando Souto", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 95260, MetaKM: 1600, ProximaRevisaoKM: 105206, KMRodado: 0, PercMeta: 0, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 3 },
+            { Placa: "SCH6G48", Motorista: "Johan Willian", Corresponsavel: "Johan Willian", Modelo: "Hilux CD 4x4", Gerencia: "Murilo Lopes (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 118902, MetaKM: 1600, ProximaRevisaoKM: 126531, KMRodado: 787, PercMeta: 49, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 1 },
+            { Placa: "TGK5E59", Motorista: "Matheus Castanheira", Corresponsavel: "Matheus Castanheira", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 33428, MetaKM: 1600, ProximaRevisaoKM: 34100, KMRodado: 507, PercMeta: 32, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 2 },
+            { Placa: "SIR1A55", Motorista: "Willian AT", Corresponsavel: "Carlos Eduardo", Modelo: "STRADA ENDURANCE", Gerencia: "Operações Sp", Proprietario: "Locado", Status: "Disponível", KMAtual: 45200, MetaKM: 2000, ProximaRevisaoKM: 50000, KMRodado: 1850, PercMeta: 92, ClassificacaoOciosidade: "NÃO PARTICIPA", DiasParado: 0, DiasSemAbastecer: 0 },
+            { Placa: "SIV9I19", Motorista: "Andrey Elias Costa", Corresponsavel: "Juliana Paes", Modelo: "Argo Flex 1.0 4P", Gerencia: "Serviços Logística", Proprietario: "Próprio", Status: "Manutenção", KMAtual: 68100, MetaKM: 1500, ProximaRevisaoKM: 68500, KMRodado: 210, PercMeta: 14, ClassificacaoOciosidade: "MANUTENÇÃO", DiasParado: 5, DiasSemAbastecer: 4 },
+            { Placa: "SIU9I71", Motorista: "Gustavo Rocha", Corresponsavel: "Roberto Lima", Modelo: "S10 CS LS MT 4x4", Gerencia: "Campo & Obras", Proprietario: "Próprio", Status: "Disponível", KMAtual: 82300, MetaKM: 1800, ProximaRevisaoKM: 83000, KMRodado: 1720, PercMeta: 95, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 1 },
+            { Placa: "SYU3G17", Motorista: "Paulo Sérgio", Corresponsavel: "Paulo Sérgio", Modelo: "STRADA ENDURANCE CP FLEX 1.3", Gerencia: "Murilo Lopes (RVD)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 14200, MetaKM: 2000, ProximaRevisaoKM: 20000, KMRodado: 1980, PercMeta: 99, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 2 }
         ];
 
         const defaultKeyHistory = [
-            { id: 1, nome: "Fernando Souto", placa: "SCH4B28", modelo: "Hilux CD 4x4", dataEntrega: "27/07/2026", dataDevolucao: "12/08/2026", cidade: "-", status: "Devolvido" },
-            { id: 2, nome: "Matheus Castanheira", placa: "TGK5E59", modelo: "Hilux CD 4x4", dataEntrega: "10/08/2026", dataDevolucao: "", cidade: "-", status: "Em Uso" }
+            { id: 1, nome: "Willian AT", placa: "SIR1A55", modelo: "STRADA ENDURANCE", dataEntrega: "27/07/2026", dataDevolucao: "12/08/2026", cidade: "-", status: "Devolvido" },
+            { id: 2, nome: "Andrey Elias Costa", placa: "SIV9I19", modelo: "Argo Flex 1.0 4P", dataEntrega: "10/08/2026", dataDevolucao: "", cidade: "-", status: "Em Uso" },
+            { id: 3, nome: "Gustavo Rocha", placa: "SIU9I71", modelo: "S10 CS LS MT 4x4", dataEntrega: "13/08/2026", dataDevolucao: "13/08/2026", cidade: "-", status: "Devolvido" },
+            { id: 4, nome: "Paulo Sérgio", placa: "SYU3G17", modelo: "STRADA ENDURANCE CP FLEX 1.3", dataEntrega: "14/08/2026", dataDevolucao: "03/09/2026", cidade: "Goiânia", status: "Devolvido" }
         ];
 
-        let fleetData = [];
-        let keyHistory = [];
+        let fleetData = [...defaultFleetData];
+        let keyHistory = [...defaultKeyHistory];
         let currentActiveTab = 'painel';
         let chartStatusInstance = null;
         let chartGerenciaInstance = null;
 
-        // PERSISTÊNCIA & CARREGAMENTO DE DADOS
-        async function loadData() {
-            // Primeiro tenta carregar do localStorage (garante salvamento offline imediato)
-            const savedFleet = localStorage.getItem('fleet_data_persist');
-            const savedKeys = localStorage.getItem('fleet_keys_persist');
-
-            if (savedFleet) {
-                try {
-                    fleetData = JSON.parse(savedFleet);
-                } catch (e) {
-                    fleetData = [...defaultFleetData];
-                }
-            } else {
-                fleetData = [...defaultFleetData];
-                saveFleetDataStorage();
-            }
-
-            if (savedKeys) {
-                try {
-                    keyHistory = JSON.parse(savedKeys);
-                } catch (e) {
-                    keyHistory = [...defaultKeyHistory];
-                }
-            } else {
-                keyHistory = [...defaultKeyHistory];
-                saveKeyHistoryStorage();
-            }
-        }
-
-        function saveFleetDataStorage() {
-            localStorage.setItem('fleet_data_persist', JSON.stringify(fleetData));
-            saveLastUpdateTimestamp();
-        }
-
-        function saveKeyHistoryStorage() {
-            localStorage.setItem('fleet_keys_persist', JSON.stringify(keyHistory));
-            saveLastUpdateTimestamp();
-        }
-
+        // TIMESTAMP MANAGEMENT
         function saveLastUpdateTimestamp() {
             const now = new Date();
             const formattedDate = now.toLocaleDateString('pt-BR');
             const formattedTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const fullTimestamp = `${formattedDate} às ${formattedTime}`;
+            
             localStorage.setItem('fleet_last_update', fullTimestamp);
             displayLastUpdateTimestamp();
         }
@@ -643,89 +608,7 @@
             }
         }
 
-        // IMPORTAR CSV
-        function handleCSVUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                parseCSVData(text);
-            };
-            reader.readAsText(file, 'UTF-8');
-        }
-
-        function parseCSVData(text) {
-            const lines = text.split(/\r\n|\n/);
-            if (lines.length < 2) return;
-
-            // Detecta separador (vírgula ou ponto e vírgula)
-            const separator = lines[0].includes(';') ? ';' : ',';
-            const headers = lines[0].split(separator).map(h => h.trim().replace(/^"|"$/g, ''));
-
-            const newFleet = [];
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                const cols = lines[i].split(separator).map(c => c.trim().replace(/^"|"$/g, ''));
-                if (cols.length < headers.length) continue;
-
-                const rowObj = {};
-                headers.forEach((h, index) => {
-                    rowObj[h] = cols[index] || '';
-                });
-
-                newFleet.push({
-                    Placa: rowObj['Placa'] || rowObj['placa'] || `PLACA${i}`,
-                    Motorista: rowObj['Motorista'] || rowObj['motorista'] || '',
-                    Corresponsavel: rowObj['Corresponsável'] || rowObj['corresponsavel'] || '',
-                    Modelo: rowObj['Modelo'] || rowObj['modelo'] || 'Padrão',
-                    Gerencia: rowObj['Gerência'] || rowObj['gerencia'] || 'Itamar Albuquerque (MOR)',
-                    Proprietario: rowObj['Proprietário'] || rowObj['proprietario'] || 'Próprio',
-                    Status: rowObj['Status'] || rowObj['status'] || 'Disponível',
-                    KMAtual: parseFloat(rowObj['KMAtual'] || rowObj['km_atual'] || 0) || 0,
-                    MetaKM: parseFloat(rowObj['MetaKM'] || rowObj['meta_km'] || 1600) || 1600,
-                    ProximaRevisaoKM: parseFloat(rowObj['ProximaRevisaoKM'] || rowObj['proxima_revisao_km'] || 0) || 0,
-                    KMRodado: parseFloat(rowObj['KMRodado'] || rowObj['km_rodado'] || 0) || 0,
-                    PercMeta: parseFloat(rowObj['PercMeta'] || rowObj['perc_meta'] || 0) || 0,
-                    ClassificacaoOciosidade: rowObj['ClassificacaoOciosidade'] || rowObj['classificacao_ociosidade'] || 'NORMAL',
-                    DiasParado: parseInt(rowObj['DiasParado'] || rowObj['dias_parado'] || 0) || 0,
-                    DiasSemAbastecer: parseInt(rowObj['DiasSemAbastecer'] || rowObj['dias_sem_abastecer'] || 0) || 0
-                });
-            }
-
-            if (newFleet.length > 0) {
-                fleetData = newFleet;
-                saveFleetDataStorage();
-                populateFilterDropdowns();
-                renderAllViews();
-                alert(`Base de dados importada com sucesso! ${newFleet.length} veículos carregados e salvos.`);
-            } else {
-                alert("Não foi possível ler os registros do arquivo CSV. Verifique o formato.");
-            }
-        }
-
-        function exportCSVWithMotoristas() {
-            if (fleetData.length === 0) return;
-            const headers = ["Placa", "Motorista", "Corresponsavel", "Modelo", "Gerencia", "Proprietario", "Status", "KMAtual", "MetaKM", "ProximaRevisaoKM", "KMRodado", "PercMeta", "ClassificacaoOciosidade", "DiasParado", "DiasSemAbastecer"];
-            let csvContent = headers.join(";") + "\n";
-
-            fleetData.forEach(d => {
-                const row = headers.map(h => `"${(d[h] !== undefined ? d[h] : '')}"`);
-                csvContent += row.join(";") + "\n";
-            });
-
-            const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `frota_manutencao_rd_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        // MULTI-SELECT DROPDOWNS
+        // MULTI-SELECT DROPDOWN LOGIC
         function toggleDropdown(menuId) {
             const menu = document.getElementById(menuId);
             if (!menu) return;
@@ -839,7 +722,7 @@
             });
         }
 
-        // AUTENTICAÇÃO ADMIN
+        // AUTH CONTROL
         function handleAuthToggle() {
             if (isAdminLoggedIn) {
                 if (confirm("Deseja sair do Modo Administrador?")) {
@@ -905,31 +788,56 @@
             renderAllViews();
         }
 
+        // PERSISTENCE
+        function saveFleetData(data) { localStorage.setItem('fleet_data', JSON.stringify(data)); }
+        function getSavedFleetData() { try { const s = localStorage.getItem('fleet_data'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+        function saveKeyHistory(history) { localStorage.setItem('fleet_keys', JSON.stringify(history)); }
+        function getSavedKeyHistory() { try { const s = localStorage.getItem('fleet_keys'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+        function getSavedMotoristas() { try { return JSON.parse(localStorage.getItem('fleet_motoristas')) || {}; } catch(e) { return {}; } }
+        function saveMotoristasMap(map) { localStorage.setItem('fleet_motoristas', JSON.stringify(map)); }
+        function saveSingleMotorista(placa, motorista) { const map = getSavedMotoristas(); map[placa] = motorista; saveMotoristasMap(map); }
+
         function resetBaseDados() {
             if (!isAdminLoggedIn) return;
             if (confirm("Resetar dados para a versão padrão inicial?")) {
-                localStorage.removeItem('fleet_data_persist');
-                localStorage.removeItem('fleet_keys_persist');
+                localStorage.removeItem('fleet_data');
+                localStorage.removeItem('fleet_keys');
+                localStorage.removeItem('fleet_motoristas');
                 fleetData = [...defaultFleetData];
                 keyHistory = [...defaultKeyHistory];
-                saveFleetDataStorage();
-                saveKeyHistoryStorage();
+                saveLastUpdateTimestamp();
                 populateFilterDropdowns();
                 renderAllViews();
             }
         }
 
-        // INICIALIZAÇÃO
-        document.addEventListener('DOMContentLoaded', async () => {
+        // INITIALIZATION
+        document.addEventListener('DOMContentLoaded', () => {
             isAdminLoggedIn = sessionStorage.getItem('isAdmin') === 'true';
 
-            await loadData();
+            const savedFleet = getSavedFleetData();
+            if (savedFleet && savedFleet.length > 0) fleetData = savedFleet;
+
+            const savedKeys = getSavedKeyHistory();
+            if (savedKeys && savedKeys.length > 0) keyHistory = savedKeys;
+
+            const savedMap = getSavedMotoristas();
+            fleetData.forEach(item => {
+                if (item.DiasSemAbastecer === undefined) item.DiasSemAbastecer = item.ClassificacaoOciosidade === "SEM ABASTECIMENTO" ? 2 : 0;
+                if (savedMap[item.Placa] !== undefined && savedMap[item.Placa] !== '') {
+                    item.Motorista = savedMap[item.Placa];
+                } else if (item.Motorista) {
+                    savedMap[item.Placa] = item.Motorista;
+                }
+            });
+            saveMotoristasMap(savedMap);
+
             displayLastUpdateTimestamp();
             populateFilterDropdowns();
             applyUserRoleUI();
         });
 
-        // NAVEGAÇÃO DE ABAS
+        // TAB SWITCHING
         function switchTab(tabName) {
             if (tabName === 'base' && !isAdminLoggedIn) {
                 alert("Acesso exclusivo para Administradores.");
@@ -942,7 +850,8 @@
                 if (el) el.classList.toggle('hidden', t !== tabName);
             });
 
-            ['painel', 'ficha', 'alertas', 'km', 'chaves', 'base'].forEach(t => {
+            const tabs = ['painel', 'ficha', 'alertas', 'km', 'chaves', 'base'];
+            tabs.forEach(t => {
                 const btn = document.getElementById(`tab-btn-${t}`);
                 if (!btn) return;
                 if (t === tabName) {
@@ -991,7 +900,9 @@
             const item = fleetData.find(d => d.Placa === placa);
             if (item) {
                 item.Motorista = newMotoristaName.trim();
-                saveFleetDataStorage();
+                saveSingleMotorista(placa, item.Motorista);
+                saveFleetData(fleetData);
+                saveLastUpdateTimestamp();
                 populateFilterDropdowns();
                 renderAllViews();
             }
@@ -1002,7 +913,8 @@
             const item = fleetData.find(d => d.Placa === placa);
             if (item) {
                 item.DiasSemAbastecer = parseInt(days) || 0;
-                saveFleetDataStorage();
+                saveFleetData(fleetData);
+                saveLastUpdateTimestamp();
                 renderAllViews();
             }
         }
@@ -1144,8 +1056,8 @@
                         ${precisaAbastecer ? '<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-2.5 py-1 rounded-full"><i class="fa-solid fa-gas-pump mr-1"></i> Alerta de Abastecimento (≥ 2 Dias)</span>' : '<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-1 rounded-full"><i class="fa-solid fa-check mr-1"></i> Abastecimento em Dia</span>'}
                     </h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3.5 text-xs">
-                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">KM Atual</p><p class="text-lg font-black text-white mt-1">${(v.KMAtual || 0).toLocaleString('pt-BR')} km</p></div>
-                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">Próxima Revisão</p><p class="text-lg font-black text-indigo-400 mt-1">${(v.ProximaRevisaoKM || 0).toLocaleString('pt-BR')} km</p></div>
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">KM Atual</p><p class="text-lg font-black text-white mt-1">${v.KMAtual.toLocaleString('pt-BR')} km</p></div>
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">Próxima Revisão</p><p class="text-lg font-black text-indigo-400 mt-1">${v.ProximaRevisaoKM.toLocaleString('pt-BR')} km</p></div>
                         <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">Meta Mensal</p><p class="text-lg font-black text-slate-200 mt-1">${v.MetaKM} km</p></div>
                         <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">KM Rodado</p><p class="text-lg font-black text-cyan-400 mt-1">${(v.KMRodado || 0).toLocaleString('pt-BR')} km</p></div>
                         <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800"><p class="text-slate-500 font-semibold">Dias Sem Abastecer</p><p class="text-lg font-black ${precisaAbastecer ? 'text-rose-400' : 'text-emerald-400'} mt-1">${v.DiasSemAbastecer || 0} dia(s)</p></div>
@@ -1188,14 +1100,15 @@
                                 </span>
                             `}
                         </td>
-                        <td class="p-3.5 font-medium">${(d.KMAtual || 0).toLocaleString('pt-BR')} km</td>
-                        <td class="p-3.5 font-medium">${(d.ProximaRevisaoKM || 0).toLocaleString('pt-BR')} km</td>
+                        <td class="p-3.5 font-medium">${d.KMAtual.toLocaleString('pt-BR')} km</td>
+                        <td class="p-3.5 font-medium">${d.ProximaRevisaoKM.toLocaleString('pt-BR')} km</td>
                         <td class="p-3.5 font-extrabold ${diff < 1000 ? 'text-rose-400' : 'text-slate-300'}">${diff.toLocaleString('pt-BR')} km</td>
                         <td class="p-3.5 font-extrabold ${d.DiasParado > 0 ? 'text-amber-400' : 'text-slate-500'}">${d.DiasParado} dias</td>
                     </tr>
                 `;
             }).join('');
 
+            // ATUALIZA CONTADORES DO PAINEL
             document.getElementById('fuelAlertCount').innerText = `${fuelAlertCount} Veículo(s)`;
             const badgeCount = document.getElementById('alertBadgeCount');
             if (badgeCount) {
@@ -1204,6 +1117,7 @@
             }
         }
 
+        // 4. HELPER FORMATAÇÃO DE OCIOSIDADE / STATUS COM ALERTAS
         function getOciosidadeBadge(status) {
             const s = (status || 'NORMAL').toUpperCase();
             let colorClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
@@ -1214,6 +1128,8 @@
                 colorClass = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
             } else if (s.includes('META NÃO') || s.includes('ATENÇÃO') || s.includes('RISCO')) {
                 colorClass = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+            } else if (s.includes('NÃO PARTICIPA')) {
+                colorClass = 'bg-slate-800 text-slate-400 border-slate-700';
             }
             
             return `<span class="inline-block whitespace-normal break-words text-center leading-tight px-2.5 py-1 rounded-lg text-[11px] font-extrabold border ${colorClass} min-w-[130px] max-w-[180px]">${s}</span>`;
@@ -1267,7 +1183,7 @@
             const formattedEntrega = dataEntrega ? dataEntrega.split('-').reverse().join('/') : '-';
             const formattedDevolucao = dataDevolucao ? dataDevolucao.split('-').reverse().join('/') : '';
 
-            const newChaveItem = {
+            keyHistory.unshift({
                 id: Date.now(),
                 nome: nome,
                 placa: placa,
@@ -1276,10 +1192,10 @@
                 dataDevolucao: formattedDevolucao || '',
                 cidade: cidade,
                 status: dataDevolucao ? 'Devolvido' : 'Em Uso'
-            };
+            });
 
-            keyHistory.unshift(newChaveItem);
-            saveKeyHistoryStorage();
+            saveKeyHistory(keyHistory);
+            saveLastUpdateTimestamp();
             renderChavesHistory(getFilteredData());
             document.getElementById('formChaves').reset();
         }
@@ -1296,7 +1212,8 @@
                     record.dataDevolucao = '';
                     record.status = 'Em Uso';
                 }
-                saveKeyHistoryStorage();
+                saveKeyHistory(keyHistory);
+                saveLastUpdateTimestamp();
                 renderChavesHistory(getFilteredData());
             }
         }
@@ -1326,58 +1243,150 @@
                         <td class="p-3.5">${k.dataEntrega}</td>
                         <td class="p-2 bg-amber-500/10 border-x border-amber-500/20">
                             ${isAdminLoggedIn ? `
-                                <input type="date" value="${dateDevInput \vert{}\vert{} ''}" onchange="updateDataDevolucaoInline(${k.id}, this.value)" class="bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-200 focus:ring-2 focus:ring-amber-500">
+                                <input type="date" value="${dateDevInput || ''}" onchange="updateDataDevolucaoInline(${k.id}, this.value)" class="bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-200 focus:ring-2 focus:ring-amber-500">
                             ` : `
                                 <span class="font-semibold text-slate-300">${k.dataDevolucao || '-'}</span>
                             `}
                         </td>
                         <td class="p-3.5">${k.cidade}</td>
                         <td class="p-3.5">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${k.status === 'Devolvido' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">${k.status}</span>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${k.status === 'Devolvido' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
+                                ${k.status}
+                            </span>
                         </td>
-                        <td class="p-3.5 text-center admin-only hidden">
-                            <button onclick="deleteKeyRecord(${k.id})" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-trash-can"></i></button>
-                        </td>
+                        ${isAdminLoggedIn ? `
+                            <td class="p-3.5 text-center admin-only">
+                                <button onclick="excluirChave(${k.id})" class="text-rose-400 hover:text-rose-300 p-1.5 transition" title="Excluir"><i class="fa-solid fa-trash-can"></i></button>
+                            </td>
+                        ` : ''}
                     </tr>
                 `;
             }).join('');
         }
 
-        function deleteKeyRecord(id) {
+        function excluirChave(id) {
             if (!isAdminLoggedIn) return;
-            if (confirm("Deseja excluir este registro de chave?")) {
+            if (confirm('Excluir este registro?')) {
                 keyHistory = keyHistory.filter(k => k.id !== id);
-                saveKeyHistoryStorage();
+                saveKeyHistory(keyHistory);
+                saveLastUpdateTimestamp();
                 renderChavesHistory(getFilteredData());
             }
         }
 
-        // 6. BASE DE DADOS CENTRAL (ADMIN)
+        // 6. BASE CENTRAL
         function renderBaseDadosCentral(data) {
+            document.getElementById('baseRowCount').innerText = `${data.length} registros`;
             const tbody = document.getElementById('tableBaseBody');
-            document.getElementById('baseRowCount').innerText = `${fleetData.length} registros totais`;
 
-            tbody.innerHTML = fleetData.map(d => `
-                <tr class="hover:bg-slate-800/40 transition">
-                    <td class="p-3.5 font-bold text-white">${d.Placa}</td>
-                    <td class="p-2 bg-amber-950/40 border-x border-amber-800/40">
-                        <input type="text" value="${d.Motorista || ''}" onchange="updateMotoristaInline('${d.Placa}', this.value)" class="w-full bg-slate-900 border border-amber-500/30 rounded-lg px-2.5 py-1.5 text-xs text-amber-200 font-bold focus:ring-2 focus:ring-amber-500" placeholder="Nome do motorista">
+            tbody.innerHTML = data.map(d => `
+                <tr class="hover:bg-slate-800/40 border-b border-slate-800">
+                    <td class="p-3.5 font-black text-indigo-400 bg-slate-900">${d.Placa}</td>
+                    <td class="p-2 bg-amber-500/10 border-x border-amber-500/20">
+                        <input type="text" value="${d.Motorista || ''}" placeholder="Motorista..." onchange="updateMotoristaInline('${d.Placa}', this.value)" class="w-full bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1.5 text-xs font-bold text-amber-200 focus:ring-2 focus:ring-amber-500">
                     </td>
                     <td class="p-3.5 text-slate-400">${d.Corresponsavel || '-'}</td>
                     <td class="p-3.5 font-medium">${d.Modelo}</td>
                     <td class="p-3.5">${d.Gerencia}</td>
                     <td class="p-3.5">${d.Proprietario}</td>
                     <td class="p-3.5"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${d.Status === 'Disponível' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">${d.Status}</span></td>
-                    <td class="p-2 bg-slate-900/60">
-                        <input type="number" min="0" value="${d.DiasSemAbastecer || 0}" onchange="updateDiasSemAbastecerInline('${d.Placa}', this.value)" class="w-20 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 font-bold text-center focus:ring-2 focus:ring-indigo-500">
+                    <td class="p-2">
+                        <input type="number" value="${d.DiasSemAbastecer || 0}" min="0" onchange="updateDiasSemAbastecerInline('${d.Placa}', this.value)" class="w-20 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-white text-center focus:ring-2 focus:ring-indigo-500">
                     </td>
-                    <td class="p-3.5 font-medium">${(d.KMAtual || 0).toLocaleString('pt-BR')} km</td>
+                    <td class="p-3.5 font-medium">${d.KMAtual.toLocaleString('pt-BR')} km</td>
                     <td class="p-3.5 font-medium">${d.MetaKM} km</td>
-                    <td class="p-3.5 font-bold text-cyan-400">${(d.KMRodado || 0).toLocaleString('pt-BR')} km</td>
+                    <td class="p-3.5 font-bold text-emerald-400">${(d.KMRodado || 0).toLocaleString('pt-BR')} km</td>
                     <td class="p-3.5 font-bold text-indigo-400">${d.PercMeta || 0}%</td>
-                    <td class="p-3.5 font-bold text-amber-400">${d.DiasParado || 0} dias</td>
+                    <td class="p-3.5 font-medium">${d.DiasParado}</td>
                 </tr>
             `).join('');
+        }
+
+        // CSV UPLOAD
+        function handleCSVUpload(e) {
+            if (!isAdminLoggedIn) return;
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) { parseCSVData(event.target.result); };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseCSVData(text) {
+            const lines = text.split('\n').filter(l => l.trim() !== '');
+            if (lines.length < 2) return;
+
+            const delimiter = lines[0].includes(';') ? ';' : ',';
+            const headers = lines[0].split(delimiter).map(h => h.replace(/"/g, '').trim());
+            const savedMap = getSavedMotoristas();
+            const newFleet = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i].split(delimiter).map(c => c.replace(/"/g, '').trim());
+                if (row.length < 2) continue;
+
+                const getVal = (colName) => {
+                    const idx = headers.findIndex(h => h.toLowerCase() === colName.toLowerCase());
+                    return idx !== -1 ? row[idx] : '';
+                };
+
+                const placa = getVal('Placa');
+                if (!placa) continue;
+
+                const corresponsavel = getVal('Corresponsável') || getVal('Corresponsavel');
+                const motoristaCSV = getVal('Motorista') || getVal('Responsável') || corresponsavel;
+
+                let motoristaFinal = savedMap[placa];
+                if (!motoristaFinal || motoristaFinal.trim() === '') {
+                    motoristaFinal = motoristaCSV;
+                    if (motoristaFinal) savedMap[placa] = motoristaFinal;
+                }
+
+                newFleet.push({
+                    Placa: placa,
+                    Motorista: motoristaFinal || '',
+                    Corresponsavel: corresponsavel,
+                    Modelo: getVal('Modelo') || 'N/I',
+                    Gerencia: getVal('Gerência') || getVal('Gerencia') || 'Geral',
+                    Proprietario: getVal('Proprietário') || 'Próprio',
+                    Status: getVal('Status') || 'Disponível',
+                    KMAtual: parseInt(getVal('KM Atual')) || 0,
+                    MetaKM: parseInt(getVal('Meta KM')) || 1600,
+                    ProximaRevisaoKM: parseInt(getVal('Próxima Revisão KM')) || 0,
+                    KMRodado: parseFloat(getVal('KM Rodado')) || 0,
+                    PercMeta: parseFloat(getVal('% Meta')) || 0,
+                    ClassificacaoOciosidade: getVal('Classificação Ociosidade') || 'NORMAL',
+                    DiasParado: parseInt(getVal('Dias Parado')) || 0,
+                    DiasSemAbastecer: parseInt(getVal('Dias Sem Abastecer')) || (getVal('Classificação Ociosidade') === "SEM ABASTECIMENTO" ? 2 : 0)
+                });
+            }
+
+            if (newFleet.length > 0) {
+                fleetData = newFleet;
+                saveFleetData(fleetData);
+                saveMotoristasMap(savedMap);
+                saveLastUpdateTimestamp();
+                populateFilterDropdowns();
+                renderAllViews();
+                alert(`Base carregada com sucesso! (${newFleet.length} veículos)`);
+            }
+        }
+
+        // EXPORT CSV
+        function exportCSVWithMotoristas() {
+            let csv = "Placa;Motorista;Corresponsável;Modelo;Gerência;Proprietário;Status;Dias Sem Abastecer;KM Atual;Meta KM;Próxima Revisão KM;KM Rodado;% Meta;Classificação Ociosidade;Dias Parado\n";
+            fleetData.forEach(d => {
+                csv += `"${d.Placa}";"${d.Motorista || ''}";"${d.Corresponsavel || ''}";"${d.Modelo}";"${d.Gerencia}";"${d.Proprietario}";"${d.Status}";"${d.DiasSemAbastecer || 0}";"${d.KMAtual}";"${d.MetaKM}";"${d.ProximaRevisaoKM}";"${d.KMRodado}";"${d.PercMeta}";"${d.ClassificacaoOciosidade}";"${d.DiasParado}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'frota_controle_pro.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
