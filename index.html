@@ -581,7 +581,7 @@
         const ADMIN_PASSWORD_HASH = "admin123";
         let isAdminLoggedIn = false;
 
-        // DADOS PADRÃO DE FROTA (FALLBACK FILTRADOS POR ITAMAR ALBUQUERQUE (MOR))
+        // DADOS PADRÃO DE FROTA
         const defaultFleetData = [
             { Placa: "SCH4B28", Motorista: "Fernando Souto", Corresponsavel: "Fernando Souto", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (MOR)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 95260, MetaKM: 1600, ProximaRevisaoKM: 105206, KMRodado: 0, PercMeta: 0, ClassificacaoOciosidade: "SEM ABASTECIMENTO", DiasParado: 0, DiasSemAbastecer: 3 },
             { Placa: "TGK5E59", Motorista: "Matheus Castanheira", Corresponsavel: "Matheus Castanheira", Modelo: "Hilux CD 4x4", Gerencia: "Itamar Albuquerque (MOR)", Proprietario: "Próprio", Status: "Disponível", KMAtual: 33428, MetaKM: 1600, ProximaRevisaoKM: 34100, KMRodado: 507, PercMeta: 32, ClassificacaoOciosidade: "META NÃO ATINGIDA", DiasParado: 0, DiasSemAbastecer: 2 }
@@ -598,80 +598,76 @@
         let chartStatusInstance = null;
         let chartGerenciaInstance = null;
 
-        // OPERAÇÕES DO SUPABASE COM FALLBACK SEGURO
-        async function fetchFleetDataFromSupabase() {
-            if (!_supabase) {
-                const savedFleet = getSavedFleetData() || defaultFleetData;
-                fleetData = savedFleet.filter(d => d.Gerencia === 'Itamar Albuquerque (MOR)');
-                return;
-            }
+        // PERSISTÊNCIA LOCAL DE SEGURANÇA
+        function saveFleetData(data) { localStorage.setItem('fleet_data', JSON.stringify(data)); }
+        function getSavedFleetData() { try { const s = localStorage.getItem('fleet_data'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+        function saveKeyHistory(history) { localStorage.setItem('fleet_keys', JSON.stringify(history)); }
+        function getSavedKeyHistory() { try { const s = localStorage.getItem('fleet_keys'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+        function getSavedMotoristas() { try { return JSON.parse(localStorage.getItem('fleet_motoristas')) || {}; } catch(e) { return {}; } }
+        function saveMotoristasMap(map) { localStorage.setItem('fleet_motoristas', JSON.stringify(map)); }
+        function saveSingleMotorista(placa, motorista) { const map = getSavedMotoristas(); map[placa] = motorista; saveMotoristasMap(map); }
 
-            try {
-                const { data, error } = await _supabase
-                    .from('veiculos')
-                    .select('*')
-                    .eq('gerencia', 'Itamar Albuquerque (MOR)');
-
-                if (error) throw error;
-
-                if (data && data.length > 0) {
-                    fleetData = data.map(v => ({
-                        Placa: v.placa,
-                        Motorista: v.motorista || '',
-                        Corresponsavel: v.corresponsavel || '',
-                        Modelo: v.modelo || '',
-                        Gerencia: v.gerencia || '',
-                        Proprietario: v.proprietario || 'Próprio',
-                        Status: v.status || 'Disponível',
-                        KMAtual: v.km_atual || 0,
-                        MetaKM: v.meta_km || 0,
-                        ProximaRevisaoKM: v.proxima_revisao_km || 0,
-                        KMRodado: v.km_rodado || 0,
-                        PercMeta: v.perc_meta || 0,
-                        ClassificacaoOciosidade: v.classificacao_ociosidade || 'NORMAL',
-                        DiasParado: v.dias_parado || 0,
-                        DiasSemAbastecer: v.dias_sem_abastecer || 0
-                    }));
-                } else {
-                    const savedFleet = getSavedFleetData() || defaultFleetData;
-                    fleetData = savedFleet.filter(d => d.Gerencia === 'Itamar Albuquerque (MOR)');
-                }
-            } catch (e) {
-                console.warn('Usando dados locais/padrão devido a erro no Supabase:', e.message);
-                const savedFleet = getSavedFleetData() || defaultFleetData;
+        // CARREGAMENTO DOS DADOS (SUPABASE COM FALLBACK IMEDIATO)
+        async function loadDataFromSource() {
+            const savedFleet = getSavedFleetData();
+            if (savedFleet && savedFleet.length > 0) {
                 fleetData = savedFleet.filter(d => d.Gerencia === 'Itamar Albuquerque (MOR)');
             }
-        }
 
-        async function fetchKeyHistoryFromSupabase() {
-            if (!_supabase) {
-                const savedKeys = getSavedKeyHistory();
-                if (savedKeys && savedKeys.length > 0) keyHistory = savedKeys;
-                return;
+            const savedKeys = getSavedKeyHistory();
+            if (savedKeys && savedKeys.length > 0) {
+                keyHistory = savedKeys;
             }
 
-            try {
-                const { data, error } = await _supabase.from('historico_chaves').select('*').order('id', { ascending: false });
-                if (error) throw error;
-                if (data && data.length > 0) {
-                    keyHistory = data.map(k => ({
-                        id: k.id,
-                        nome: k.nome,
-                        placa: k.placa,
-                        modelo: k.modelo,
-                        dataEntrega: k.data_entrega,
-                        dataDevolucao: k.data_devolucao || '',
-                        cidade: k.cidade || '-',
-                        status: k.status || 'Em Uso'
-                    }));
-                } else {
-                    const savedKeys = getSavedKeyHistory();
-                    if (savedKeys && savedKeys.length > 0) keyHistory = savedKeys;
+            // Renderiza imediatamente para liberar a UI e abas
+            populateFilterDropdowns();
+            renderAllViews();
+
+            // Sincroniza em segundo plano com o Supabase se disponível
+            if (_supabase) {
+                try {
+                    const { data, error } = await _supabase.from('veiculos').select('*').eq('gerencia', 'Itamar Albuquerque (MOR)');
+                    if (!error && data && data.length > 0) {
+                        fleetData = data.map(v => ({
+                            Placa: v.placa,
+                            Motorista: v.motorista || '',
+                            Corresponsavel: v.corresponsavel || '',
+                            Modelo: v.modelo || '',
+                            Gerencia: v.gerencia || '',
+                            Proprietario: v.proprietario || 'Próprio',
+                            Status: v.status || 'Disponível',
+                            KMAtual: v.km_atual || 0,
+                            MetaKM: v.meta_km || 0,
+                            ProximaRevisaoKM: v.proxima_revisao_km || 0,
+                            KMRodado: v.km_rodado || 0,
+                            PercMeta: v.perc_meta || 0,
+                            ClassificacaoOciosidade: v.classificacao_ociosidade || 'NORMAL',
+                            DiasParado: v.dias_parado || 0,
+                            DiasSemAbastecer: v.dias_sem_abastecer || 0
+                        }));
+                        saveFleetData(fleetData);
+                        populateFilterDropdowns();
+                        renderAllViews();
+                    }
+
+                    const { data: dataKeys, error: errKeys } = await _supabase.from('historico_chaves').select('*').order('id', { ascending: false });
+                    if (!errKeys && dataKeys && dataKeys.length > 0) {
+                        keyHistory = dataKeys.map(k => ({
+                            id: k.id,
+                            nome: k.nome,
+                            placa: k.placa,
+                            modelo: k.modelo,
+                            dataEntrega: k.data_entrega,
+                            dataDevolucao: k.data_devolucao || '',
+                            cidade: k.cidade || '-',
+                            status: k.status || 'Em Uso'
+                        }));
+                        saveKeyHistory(keyHistory);
+                        renderAllViews();
+                    }
+                } catch (e) {
+                    console.warn("Modo offline ou erro ao conectar com Supabase:", e.message);
                 }
-            } catch (e) {
-                console.warn('Usando chaves locais/padrão:', e.message);
-                const savedKeys = getSavedKeyHistory();
-                if (savedKeys && savedKeys.length > 0) keyHistory = savedKeys;
             }
         }
 
@@ -681,7 +677,6 @@
             const formattedDate = now.toLocaleDateString('pt-BR');
             const formattedTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const fullTimestamp = `${formattedDate} às ${formattedTime}`;
-            
             localStorage.setItem('fleet_last_update', fullTimestamp);
             displayLastUpdateTimestamp();
         }
@@ -875,15 +870,6 @@
             renderAllViews();
         }
 
-        // PERSISTENCE (LOCAL STORAGE AS BACKUP)
-        function saveFleetData(data) { localStorage.setItem('fleet_data', JSON.stringify(data)); }
-        function getSavedFleetData() { try { const s = localStorage.getItem('fleet_data'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
-        function saveKeyHistory(history) { localStorage.setItem('fleet_keys', JSON.stringify(history)); }
-        function getSavedKeyHistory() { try { const s = localStorage.getItem('fleet_keys'); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
-        function getSavedMotoristas() { try { return JSON.parse(localStorage.getItem('fleet_motoristas')) || {}; } catch(e) { return {}; } }
-        function saveMotoristasMap(map) { localStorage.setItem('fleet_motoristas', JSON.stringify(map)); }
-        function saveSingleMotorista(placa, motorista) { const map = getSavedMotoristas(); map[placa] = motorista; saveMotoristasMap(map); }
-
         async function resetBaseDados() {
             if (!isAdminLoggedIn) return;
             if (confirm("Resetar dados para a versão padrão inicial da gerência?")) {
@@ -914,28 +900,20 @@
             }
         }
 
-        // INITIALIZATION GARANTIDA
-        document.addEventListener('DOMContentLoaded', async () => {
+        // EXECUÇÃO IMEDIATA NO CARREGAMENTO DA PÁGINA
+        document.addEventListener('DOMContentLoaded', () => {
             try {
                 isAdminLoggedIn = sessionStorage.getItem('isAdmin') === 'true';
-
-                // Tenta carregar do Supabase, mas com segurança total para não travar a UI
-                await fetchFleetDataFromSupabase();
-                await fetchKeyHistoryFromSupabase();
-
                 displayLastUpdateTimestamp();
-                populateFilterDropdowns();
+                loadDataFromSource();
                 applyUserRoleUI();
             } catch (err) {
-                console.error("Erro na inicialização:", err);
-                fleetData = [...defaultFleetData];
-                keyHistory = [...defaultKeyHistory];
-                populateFilterDropdowns();
+                console.error("Erro crítico na inicialização:", err);
                 renderAllViews();
             }
         });
 
-        // TAB SWITCHING
+        // TAB SWITCHING ROBUSTA
         function switchTab(tabName) {
             if (tabName === 'base' && !isAdminLoggedIn) {
                 alert("Acesso exclusivo para Administradores.");
@@ -945,11 +923,16 @@
             currentActiveTab = tabName;
             ['painel', 'ficha', 'alertas', 'km', 'chaves', 'base'].forEach(t => {
                 const el = document.getElementById(`view-${t}`);
-                if (el) el.classList.toggle('hidden', t !== tabName);
+                if (el) {
+                    if (t === tabName) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                    }
+                }
             });
 
-            const tabs = ['painel', 'ficha', 'alertas', 'km', 'chaves', 'base'];
-            tabs.forEach(t => {
+            ['painel', 'ficha', 'alertas', 'km', 'chaves', 'base'].forEach(t => {
                 const btn = document.getElementById(`tab-btn-${t}`);
                 if (!btn) return;
                 if (t === tabName) {
@@ -1461,7 +1444,7 @@
                 <tr class="hover:bg-slate-800/40 border-b border-slate-800">
                     <td class="p-3.5 font-black text-indigo-400 bg-slate-900">${d.Placa}</td>
                     <td class="p-2 bg-amber-500/10 border-x border-amber-500/20">
-                        <input type="text" value="${d.Motorista || ''}" placeholder="Motorista..." onchange="updateMotoristaInline('${d.Placa}', this.value)" class="w-full bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1.5 text-xs font-bold text-amber-200 focus:ring-2 focus:ring-amber-500">
+                        <input type="text" value="${d.Motorista || ''}" placeholder="Motorista..." onchange="updateMotoristaInline('${d.Placa}', this.value)" class="w-full bg-slate-800 border border-amber-500/30 rounded-lg px-2.5 py-1.5 text-xs font-bold text-amber-200 focus:ring-2 focus:ring-indigo-500">
                     </td>
                     <td class="p-3.5 text-slate-400">${d.Corresponsavel || '-'}</td>
                     <td class="p-3.5 font-medium">${d.Modelo}</td>
@@ -1489,7 +1472,7 @@
             const reader = new FileReader();
             reader.onload = function(event) { parseCSVData(event.target.result); };
             reader.readAsText(file, 'UTF-8');
-            e.target.value = ''; // Limpa o input para permitir reenvio do mesmo arquivo
+            e.target.value = ''; 
         }
 
         async function parseCSVData(text) {
@@ -1515,7 +1498,6 @@
 
                 const gerenciaCSV = getVal('Gerência') || getVal('Gerencia') || 'Itamar Albuquerque (MOR)';
                 
-                // Filtra para aceitar apenas registros pertencentes a esta gerência
                 if (gerenciaCSV !== 'Itamar Albuquerque (MOR)') continue;
 
                 const corresponsavel = getVal('Corresponsável') || getVal('Corresponsavel');
@@ -1561,8 +1543,25 @@
                         if (error) throw error;
                     }
 
-                    // Atualiza dados locais e sincroniza
-                    await fetchFleetDataFromSupabase();
+                    fleetData = newFleetForSupabase.map(v => ({
+                        Placa: v.placa,
+                        Motorista: v.motorista || '',
+                        Corresponsavel: v.corresponsavel || '',
+                        Modelo: v.modelo || '',
+                        Gerencia: v.gerencia || '',
+                        Proprietario: v.proprietario || 'Próprio',
+                        Status: v.status || 'Disponível',
+                        KMAtual: v.km_atual || 0,
+                        MetaKM: v.meta_km || 0,
+                        ProximaRevisaoKM: v.proxima_revisao_km || 0,
+                        KMRodado: v.km_rodado || 0,
+                        PercMeta: v.perc_meta || 0,
+                        ClassificacaoOciosidade: v.classificacao_ociosidade || 'NORMAL',
+                        DiasParado: v.dias_parado || 0,
+                        DiasSemAbastecer: v.dias_sem_abastecer || 0
+                    }));
+
+                    saveFleetData(fleetData);
                     saveMotoristasMap(savedMap);
                     saveLastUpdateTimestamp();
                     populateFilterDropdowns();
